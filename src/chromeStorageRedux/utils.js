@@ -1,3 +1,5 @@
+import { CHROME_REDUX_CONSTANTS, EXTENSIONS_CONTEXTS } from './contants';
+
 const randomString = () =>
 	Math.random().toString(36).substring(7).split('').join('.');
 
@@ -93,3 +95,46 @@ export function kindOf(val) {
 
 export const $$observable = /* #__PURE__ */ (() =>
 	(typeof Symbol === 'function' && Symbol.observable) || '@@observable')();
+
+export function getBrowserAPI() {
+	let api;
+
+	try {
+		// eslint-disable-next-line no-undef
+		api = self.chrome || self.browser || browser;
+	} catch (error) {
+		// eslint-disable-next-line no-undef
+		api = browser;
+	}
+
+	if (!api) {
+		throw new Error('Browser API is not present');
+	}
+
+	return api;
+}
+
+export function shallowDiff(oldObj, newObj) {
+	const difference = [];
+
+	Object.keys(newObj).forEach((key) => {
+		if (oldObj[key] !== newObj[key]) {
+			difference.push({
+				key,
+				value: newObj[key],
+				change: CHROME_REDUX_CONSTANTS.DIFF_STATUS_UPDATED,
+			});
+		}
+	});
+
+	Object.keys(oldObj).forEach((key) => {
+		if (!Object.prototype.hasOwnProperty.call(newObj, key)) {
+			difference.push({
+				key,
+				change: CHROME_REDUX_CONSTANTS.DIFF_STATUS_REMOVED,
+			});
+		}
+	});
+
+	return difference;
+}

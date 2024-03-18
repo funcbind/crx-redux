@@ -1,0 +1,42 @@
+const CHROME_STORAGE_KEY_FOR = {
+	REDUX_STORE: '___REDUX_STORE___',
+	IS_REDUX_STORE_INITIALIZED: '___IS_REDUX_STORE_INITIALIZED___',
+	ACTIVE_EXTENSION_CONTEXTS: '___ACTIVE_EXTENSION_CONTEXTS___',
+};
+
+const EXTENSIONS_CONTEXTS = {
+	CONTENT_SCRIPT: 'content-script',
+	POPUP: 'popup',
+	OPTIONS: 'options',
+	BACKGROUND: 'background',
+	DEVTOOLS: 'devtools',
+};
+
+const COMMUNICATION_MESSAGE_IDS = {
+	DISPATCH_TO_STORE: 'crx.dispatch',
+	GET_LATEST_STORE_STATE: 'crx.get_state',
+	SUBSCRIBE_TO_STORE_CHANGES: 'crx.subscribe',
+	CHECK_STORE_EXISTENCE: 'crx.check_store_existence',
+	PATCH_STATE_TYPE: 'crx.patch_state',
+	STATE_TYPE: 'crx.state',
+	BACKGROUND_STORE_READY: 'crx.background_store_ready',
+	BACKGROUND_SUBSCRIPTION_BROADCAST: 'crx.background_subscription_broadcast',
+};
+
+const CHROME_REDUX_CONSTANTS = {
+	BACKGROUND_STORE_CONNECTION_PORT_NAME: 'back_store_connection_port',
+	DIFF_STATUS_UPDATED: 'updated',
+	DIFF_STATUS_REMOVED: 'removed',
+};
+
+Object.freeze(CHROME_STORAGE_KEY_FOR);
+Object.freeze(EXTENSIONS_CONTEXTS);
+Object.freeze(COMMUNICATION_MESSAGE_IDS);
+Object.freeze(CHROME_REDUX_CONSTANTS);
+
+export {
+	CHROME_STORAGE_KEY_FOR,
+	EXTENSIONS_CONTEXTS,
+	COMMUNICATION_MESSAGE_IDS,
+	CHROME_REDUX_CONSTANTS,
+};

@@ -9,7 +9,7 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const clipboardSettingsSlice = createSlice({
 	name: 'settings',
-	initialState: null,
+	initialState: {},
 	reducers: {
 		toggleVisibilityOnWebPages(state) {
 			state.visibleOnWebPages = !state.visibleOnWebPages;

@@ -1,5 +1,6 @@
-import store from './store';
+import createTestStore from './store';
 import { addCopiedItem } from '../common/clipboardItemsReducer';
+// import { onMessage } from 'webext-bridge/background';
 
 let unsubscribe;
 
@@ -7,25 +8,25 @@ console.log(`Inside reduxStoreTesting.js - Testing persistent store`);
 
 setTimeout(async () => {
 	// clearing local storage before testing
+	const store = await createTestStore();
 	unsubscribe = store.subscribe(async () => {
 		const latestState = await store.getState();
 		const { clipboardItems } = latestState;
 		console.log(
 			`reduxStoreTesting.js : Background store changed -> Latest state`,
 			latestState,
-			JSON.stringify(clipboardItems, null, 2)
+			clipboardItems
 		);
 	});
-
-	store.dispatch(addCopiedItem('1st copied text!!'));
-	store.dispatch(addCopiedItem('Another Copied Text'));
-	store.dispatch(addCopiedItem('Copying Copying Copying'));
-	store.dispatch(addCopiedItem('Testing123 Testing123'));
-
+	await store.dispatch(addCopiedItem('First dispatch testing'));
+	await store.dispatch(addCopiedItem('Second dispatch Testing'));
+	await store.dispatch(addCopiedItem('Third dispatch Testing'));
+	await store.dispatch(addCopiedItem('Fourth dispatch Testing'));
+	await store.dispatch(addCopiedItem('Fifth dispatch Testing'));
 	// const latestState = await store.getState();
-	// console.log(`Latest state after four dispatches  `, latestState);
-	// // store.dispatch(addCopiedItem('This is some copied text'));
-}, 8000);
+	// console.log(`Latest state after four dispatches`, latestState);
+	// store.dispatch(addCopiedItem('This is some copied text'));
+}, 3000);
 
 // console.log(`Unsubscribe : `, unsubscribe);
 // setTimeout(() => {

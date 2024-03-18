@@ -1,55 +1,48 @@
-import { Store as ProxyStore } from 'webext-redux';
-// import {
-// 	// toggleVisibilityOnWebPages,
-// 	// toggleFifo,
-// 	// setOpacity,
-// 	// setTimeToDisappear,
-// } from '../common/clipboardSettingsReducer';
-import {
-	addCopiedItem,
-	// deleteCopiedItem,
-	// reverseCopiedItems,
-	// clearClipboard,
-	// editCopiedItem,
-	// getCopiedItem,
-	getCopiedItems,
-} from '../common/clipboardItemsReducer';
+import ContentScriptProxyStore from '../chromeStorageRedux/ContentScriptProxyStore';
+import './MainContent.jsx';
+import { EXTENSIONS_CONTEXTS } from '../chromeStorageRedux/contants.js';
+import { sendMessage, onMessage } from 'webext-bridge/content-script';
+import ProxyStore from '../chromeStorageRedux/proxyStore.js';
 
-window.addEventListener('load', onWindowLoaded, false);
+console.log(`inside content script on gitlab.com`);
+// window.addEventListener('load', onWindowLoaded, false);
 
-const proxyStore = new ProxyStore();
-
-console.log(`Inside content script : `);
-proxyStore.ready().then(async () => {
-	// proxyStore.dispatch(toggleVisibilityOnWebPages());
-	// proxyStore.dispatch(toggleFifo());
-	// proxyStore.dispatch(setOpacity(0.79));
-	// proxyStore.dispatch(setTimeToDisappear(560));
-	// await fakeAddCopiedItems();
-	const clipboardItems = getCopiedItems(proxyStore.getState());
-	console.log(`clipboard items : `, clipboardItems);
-	const thirdCopiedItemId = clipboardItems?.[2]?.id;
-	console.log(`third copied item id : `, thirdCopiedItemId);
-	// await proxyStore.dispatch(deleteCopiedItem(thirdCopiedItemId));
-	const updatedClipboardItems = getCopiedItems(proxyStore.getState());
-	console.log(`clipboard items : `, updatedClipboardItems);
-});
-
-function fakeAddCopiedItems() {
-	return Promise.all([
-		proxyStore.dispatch(addCopiedItem('This is some copied text')),
-		proxyStore.dispatch(addCopiedItem('Another copied text')),
-		proxyStore.dispatch(addCopiedItem('Testing some copied text')),
-		proxyStore.dispatch(addCopiedItem('More copied Text')),
-		proxyStore.dispatch(addCopiedItem('multi copy chrome extension'))
-	]);
-}
-
-// proxyStore.subscribe(() => {
-// 	console.log(`proxy store changed : `, proxyStore.getState());
-// });
+setTimeout(onWindowLoaded, 4000);
 
 function onWindowLoaded() {
-	console.log(`window loaded`);
-	// DO YOUR STUFF HERE.
+	console.log(`allwebPages.jsx - window loaded`);
+	setTimeout(testStoreAccess, 5000);
+}
+
+async function testStoreAccess() {
+	const ContentScriptProxyStore = new ProxyStore(
+		EXTENSIONS_CONTEXTS.CONTENT_SCRIPT,
+		sendMessage,
+		onMessage
+	);
+	// ContentScriptProxyStore.subscribe(async () => {
+	// 	console.log(`Inside content script - Backend Store Subscription listener`);
+	// 	const newState = await ContentScriptProxyStore.getState();
+	// 	console.log(`Latest state post subscription listener calling : `, newState);
+	// });
+	// await ContentScriptProxyStore.dispatch(
+	// 	addCopiedItem(`Txt123 text321 HelloWorld`)
+	// );
+	// await ContentScriptProxyStore.dispatch(
+	// 	addCopiedItem(`Testing store subscription`)
+	// );
+	// let latestState = await ContentScriptProxyStore.getState();
+	// console.log(`Latest state is : `, latestState);
+	// ContentScriptProxyStore.dispatch(
+	// 	addCopiedItem(`Main store access testing from content script`)
+	// );
+	// ContentScriptProxyStore.dispatch(addCopiedItem(`content script store access testing`));
+	// latestState = await ContentScriptProxyStore.getState();
+	// console.log(`Latest state is : `, latestState);
+	// ContentScriptProxyStore.dispatch(addCopiedItem(`awaited testing`));
+	// ContentScriptProxyStore.dispatch(
+	// 	addCopiedItem(`next testing is without await or promise.all`)
+	// );
+	// const latestState = await ContentScriptProxyStore.getState();
+	// console.log(`Latest state is : `, latestState);
 }

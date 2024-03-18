@@ -1,14 +1,13 @@
 /* global chrome */
 
 import { useState } from 'react';
-import { sendMessage, onMessage } from 'webext-bridge/options';
+// import { sendMessage, onMessage } from 'webext-bridge/options';
 import reactLogo from '../assets/react.svg';
 import viteLogo from '/vite.svg';
 import './options.scss';
+import { addCopiedItem } from '../common/clipboardItemsReducer';
 
-console.log(`This is the Options file!!!`);
-
-function Options() {
+export default function Options() {
 	const [count, setCount] = useState(0);
 
 	async function handleCountBtnClick() {
@@ -20,6 +19,7 @@ function Options() {
 		// 	'content-script'
 		// );
 		// console.log(`Data received back from background : `, dataFromBackground);
+		testStoreAccess(count);
 	}
 
 	return (
@@ -52,25 +52,11 @@ function Options() {
 	);
 }
 
-onMessage('content-options', (message) => {
-	const {
-		sender: { tabId },
-		data,
-	} = message;
-
-	console.log(`message received from content SCript : `, data, tabId);
-
-	return deferredResponseBack();
-});
-
-function deferredResponseBack() {
-	const promise = new Promise((resolve) => {
-		setTimeout(() => {
-			resolve({ id: 1, name: 'kishore', age: 45 });
-		}, 5000);
-	});
-
-	return promise;
+async function testStoreAccess(count) {
+	// const response = await OptionsProxyStore.dispatch(
+	// 	addCopiedItem(`Copied Text : ${count}`)
+	// );
+	// const latestState = await OptionsProxyStore.getState();
+	// const response = await ProxyStore.getState();
+	// console.log(`Options.jsx - Latest state post dispatch : `, latestState);
 }
-
-export default Options;

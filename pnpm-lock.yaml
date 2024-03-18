@@ -11,9 +11,12 @@ dependencies:
   '@reduxjs/toolkit':
     specifier: ^1.9.7
     version: 1.9.7(react@18.2.0)
-  is-plain-obj:
-    specifier: ^4.1.0
-    version: 4.1.0
+  deep-eql:
+    specifier: ^5.0.1
+    version: 5.0.1
+  jquery:
+    specifier: ^3.7.1
+    version: 3.7.1
   object-sizeof:
     specifier: ^2.6.3
     version: 2.6.3
@@ -32,9 +35,6 @@ dependencies:
   webext-bridge:
     specifier: ^6.0.1
     version: 6.0.1
-  webext-redux:
-    specifier: ^2.1.9
-    version: 2.1.9(redux@4.2.1)
 
 devDependencies:
   '@crxjs/vite-plugin':
@@ -1132,6 +1132,11 @@ packages:
       ms: 2.1.2
     dev: true
 
+  /deep-eql@5.0.1:
+    resolution: {integrity: sha512-nwQCf6ne2gez3o1MxWifqkciwt0zhl0LO1/UwVu4uMBuPmflWM4oQ70XMqHqnBJA+nhzncaqL9HVL6KkHJ28lw==}
+    engines: {node: '>=6'}
+    dev: false
+
   /deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}
     dev: true
@@ -1902,11 +1907,6 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
-  /is-plain-obj@4.1.0:
-    resolution: {integrity: sha512-+Pgi+vMuUNkJyExiMBt5IlFoMyKnr5zhJ4Uspz58WOhBF5QoIZkFyNHIbBAtHwzVAgk5RtndVNsDRN61/mmDqg==}
-    engines: {node: '>=12'}
-    dev: false
-
   /is-regex@1.1.4:
     resolution: {integrity: sha512-kvRdxDsxZjhzUX07ZnLydzS1TU/TJlTUHHY4YLL87e37oUA49DfkLqgy+VjFocowy29cKvcSiu+kIv728jTTVg==}
     engines: {node: '>= 0.4'}
@@ -1985,6 +1985,10 @@ packages:
     resolution: {integrity: sha512-gFqAIbuKyyso/3G2qhiO2OM6shY6EPP/R0+mkDbyspxKazh8BXDC5FiFsUjlczgdNz/vfra0da2y+aHrusLG/Q==}
     hasBin: true
     dev: true
+
+  /jquery@3.7.1:
+    resolution: {integrity: sha512-m4avr8yL8kmFN8psrbFFFmB/If14iN5o9nw/NgnnM+kybDJpRsAynV2BsfpTYrTRysYUdADVD7CkUUizgkpLfg==}
+    dev: false
 
   /js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -2078,14 +2082,6 @@ packages:
     dependencies:
       p-locate: 5.0.0
     dev: true
-
-  /lodash.assignin@4.2.0:
-    resolution: {integrity: sha512-yX/rx6d/UTVh7sSVWVSIMjfnz95evAgDFdb1ZozC35I9mSFCkmzptOzevxjgbQUsc78NR44LVHWjsoMQXy9FDg==}
-    dev: false
-
-  /lodash.clonedeep@4.5.0:
-    resolution: {integrity: sha512-H5ZhCF25riFd9uB5UCkVKo61m3S/xZk1x4wA6yp/L3RFP6Z/eHH1ymQcGLo7J3GMPfm0V/7m1tryHuGVxpqEBQ==}
-    dev: false
 
   /lodash.merge@4.6.2:
     resolution: {integrity: sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ==}
@@ -3021,16 +3017,6 @@ packages:
       serialize-error: 9.1.1
       tiny-uid: 1.1.2
       webextension-polyfill: 0.9.0
-    dev: false
-
-  /webext-redux@2.1.9(redux@4.2.1):
-    resolution: {integrity: sha512-z7frkQ/avFgnMxUH6Q955hU8SDsHT9Zlq9az3OpY891RXw9nKODOTnUhNo9ZAlDFUPHhX2A+z6j74BCaYwEsfQ==}
-    peerDependencies:
-      redux: '>= 3 <= 4'
-    dependencies:
-      lodash.assignin: 4.2.0
-      lodash.clonedeep: 4.5.0
-      redux: 4.2.1
     dev: false
 
   /webextension-polyfill@0.9.0:

@@ -1,10 +1,11 @@
 /* global chrome */
 
 import { useState } from 'react';
-import { sendMessage, onMessage } from 'webext-bridge/popup';
 import reactLogo from '../assets/react.svg';
-import viteLogo from '/vite.svg';
 import './popup.scss';
+import viteLogo from '/vite.svg';
+// import PopupProxyStore from '../chromeStorageRedux/PopupProxyStore';
+import { addCopiedItem } from '../common/clipboardItemsReducer';
 
 function Popup() {
 	const [count, setCount] = useState(0);
@@ -12,12 +13,7 @@ function Popup() {
 	async function handleCountBtnClick() {
 		console.log(`inside handleCountBtnClick function`);
 		setCount((count) => count + 1);
-		const dataFromBackground = await sendMessage(
-			'popup-options1',
-			{ name: 'bhavya', age: 34 },
-			'background'
-		);
-		console.log(`Data received back from background : `, dataFromBackground);
+		testStoreAccess(count);
 	}
 
 	return (
@@ -50,25 +46,10 @@ function Popup() {
 	);
 }
 
-onMessage('content-popup', (message) => {
-	const {
-		sender: { tabId },
-		data,
-	} = message;
-
-	console.log(`message received from content SCript : `, data, tabId);
-
-	return deferredResponseBack();
-});
-
-function deferredResponseBack() {
-	const promise = new Promise((resolve) => {
-		setTimeout(() => {
-			resolve({ id: 1, name: 'kishore', age: 45 });
-		}, 5000);
-	});
-
-	return promise;
+async function testStoreAccess(count) {
+	// await PopupProxyStore.dispatch(addCopiedItem(`Copied Text : ${count}`));
+	// const response = await ProxyStore.getState();
+	// console.log(`Popup.jsx - ProxyStore Dispatch response : `, response);
 }
 
 export default Popup;

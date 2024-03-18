@@ -7,6 +7,8 @@ import createPersistentStore, {
 	clearPersistentStore,
 } from '../chromeStorageRedux/createPersistentStore';
 
+console.log(`Inside store.js - Setting up redux store`);
+
 const preloadedState = {
 	clipboardSettings: {
 		visibleOnWebPages: true,
@@ -31,8 +33,11 @@ const combinedReducer = combineReducers({
 	clipboardItems: copiedItemsReducer,
 });
 
-clearPersistentStore();
-const store = createPersistentStore(combinedReducer, preloadedState);
-console.log(`Store created`, store);
+export async function createTestStore() {
+	clearPersistentStore();
+	const store = await createPersistentStore(combinedReducer, preloadedState);
+	console.log(`Store created`, store);
+	return store;
+}
 
-export default store;
+export default createTestStore;

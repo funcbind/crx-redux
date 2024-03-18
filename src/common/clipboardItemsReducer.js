@@ -4,7 +4,7 @@ import { createSlice, nanoid } from '@reduxjs/toolkit';
 
 const clipboardItemsSlice = createSlice({
 	name: 'copiedItems',
-	initialState: null,
+	initialState: [],
 	reducers: {
 		addCopiedItem: {
 			reducer: (state, action) => {

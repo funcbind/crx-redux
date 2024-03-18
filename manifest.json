@@ -7,11 +7,12 @@
 	"permissions": ["storage", "unlimitedStorage"],
 	"content_scripts": [
 		{
-			"matches": ["*://gitlab.com/*"],
+			"matches": ["*://*.gitlab.com/*"],
 			"js": ["src/contentScripts/allWebPages.jsx"],
 			"run_at": "document_end"
 		}
 	],
+	"devtools_page": "src/devtool/devtools.html",
 	"background": {
 		"service_worker": "src/background/background.js",
 		"type": "module"

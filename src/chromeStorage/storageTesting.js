@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 // import sizeof from 'object-sizeof';
-import { LocalStorage } from '../chromeStorageInterface/storageLib';
+import { LocalStorage } from './storageLib';
 
 export function generateRandomWord() {
 	const letters = 'abcdefghijklmnopqrstuvwxyz';
