@@ -10,6 +10,7 @@ const EXTENSIONS_CONTEXTS = {
 	OPTIONS: 'options',
 	BACKGROUND: 'background',
 	DEVTOOLS: 'devtools',
+	OFFSCREEN: 'offscreen',
 };
 
 const COMMUNICATION_MESSAGE_IDS = {
@@ -17,10 +18,11 @@ const COMMUNICATION_MESSAGE_IDS = {
 	GET_LATEST_STORE_STATE: 'crx.get_state',
 	SUBSCRIBE_TO_STORE_CHANGES: 'crx.subscribe',
 	CHECK_STORE_EXISTENCE: 'crx.check_store_existence',
+	BACKGROUND_STORE_AVAILABLE: 'crx.store_available',
 	PATCH_STATE_TYPE: 'crx.patch_state',
 	STATE_TYPE: 'crx.state',
 	BACKGROUND_STORE_READY: 'crx.background_store_ready',
-	BACKGROUND_SUBSCRIPTION_BROADCAST: 'crx.background_subscription_broadcast',
+	STORE_SUBSCRIPTION_BROADCAST: 'crx.background_subscription_broadcast',
 };
 
 const CHROME_REDUX_CONSTANTS = {

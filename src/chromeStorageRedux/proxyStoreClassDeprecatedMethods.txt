@@ -1,0 +1,110 @@
+/* 
+		Deprecated functions
+	*/
+
+// const defaultOpts = {
+// 	patchStrategy: shallowDiff,
+// };
+#compareStatesFromBothStrategies(strategy1State, strategy2State) {
+	const areBothStrategiesStatesSame = deepEql(strategy1State, strategy2State);
+
+	if (!areBothStrategiesStatesSame) {
+		console.error(
+			`Both strategies states are not same. This is not expected.`
+		);
+	}
+}
+
+// STRATEGY 2.0 - For state updates & subscription handling from background store
+#handleLatestStateUpdates(message) {
+	console.info(
+		`handleLatestStateUpdates() - Received latest state updates recieved from background store via port : `,
+		message
+	);
+
+	switch (message.type) {
+		case COMMUNICATION_MESSAGE_IDS.STATE_TYPE: {
+			const initialState = message.payload;
+			this.#proxyStateStrategy2 = initialState;
+
+			console.log(
+				`handleLatestStateUpdates() - Initial state received post successful port connection: `,
+				initialState,
+				this.#proxyStateStrategy2
+			);
+			// Most important - Uncomment below code if we decide on actually using Strategy 2.0
+
+			// if (!this.#isProxyStoreReady) {
+			// 	this.#isProxyStoreReady = true;
+			// 	this.#proxyStoreReadyResolver();
+			// }
+			// this.#subsriptionListeners.forEach((l) => l());
+			break;
+		}
+
+		case COMMUNICATION_MESSAGE_IDS.PATCH_STATE_TYPE: {
+			const stateDifferences = message.payload;
+			this.#proxyStateStrategy2 = this.#patchStrategy(
+				this.#proxyStateStrategy2,
+				stateDifferences
+			);
+			console.log(
+				`handleLatestStateUpdates() - Patch state received background store subsciption update retrieval: `,
+				stateDifferences,
+				this.#proxyStateStrategy2
+			);
+			// For now we are using patch state only as a comparison method to actual getState
+			// this.#subsriptionListeners.forEach((l) => l());
+			break;
+		}
+	}
+}
+
+async #connectWithBackendRealStore(context) {
+	const response = await this.#sendMessage(
+		COMMUNICATION_MESSAGE_IDS.CHECK_STORE_EXISTENCE,
+		{},
+		EXTENSIONS_CONTEXTS.BACKGROUND
+	);
+
+	console.log(`Background store exists, Proxy store is now ready`, response);
+
+	this.#proxyStoreReadyResolver();
+	this.#isProxyStoreReady = true;
+
+	this.#onMessage(
+		COMMUNICATION_MESSAGE_IDS.SUBSCRIBE_TO_STORE_CHANGES,
+		(messageObj) => {
+			const { data } = messageObj;
+			const { action, latestState } = data;
+			// console.log(
+			// 	`proxyStore.js : Inside subscription listener`,
+			// 	action,
+			// 	latestState
+			// );
+			if (this.#subsriptionListeners.length > 0) {
+				this.#subsriptionListeners.forEach((listener) =>
+					listener(action, latestState)
+				);
+			}
+		}
+	);
+}
+
+async #getStateFromBackgroundStoreViaMessaging() {
+	const response = await this.#browserAPI.runtime.sendMessage(
+		COMMUNICATION_MESSAGE_IDS.GET_LATEST_STORE_STATE,
+		{},
+		EXTENSIONS_CONTEXTS.BACKGROUND
+	);
+	if (response.error) {
+		console.error(`Some error occurred while get state from main store in the background from
+		${this.#executionContext}`);
+		console.error(`Possible root cause - Calling getState after calling dispatch function without await
+			Possible Solution : Add await before calling dispatch if we need to immediately call getState after that
+		`);
+		throw new Error(response.error);
+	}
+	const { data } = response;
+	return data;
+}

@@ -18,11 +18,15 @@ setTimeout(async () => {
 			clipboardItems
 		);
 	});
-	await store.dispatch(addCopiedItem('First dispatch testing'));
-	await store.dispatch(addCopiedItem('Second dispatch Testing'));
-	await store.dispatch(addCopiedItem('Third dispatch Testing'));
-	await store.dispatch(addCopiedItem('Fourth dispatch Testing'));
-	await store.dispatch(addCopiedItem('Fifth dispatch Testing'));
+	// try {
+	// 	await store.dispatch(addCopiedItem('First dispatch testing'));
+	// } catch (error) {
+	// 	console.log(`reduxStoreTesting.js : Error while dispatching`, error);
+	// }
+	// store.dispatch(addCopiedItem('111 Second dispatch Testing'));
+	// store.dispatch(addCopiedItem('Third dispatch Testing'));
+	// store.dispatch(addCopiedItem('Fourth dispatch Testing'));
+	// store.dispatch(addCopiedItem('Fifth dispatch Testing'));
 	// const latestState = await store.getState();
 	// console.log(`Latest state after four dispatches`, latestState);
 	// store.dispatch(addCopiedItem('This is some copied text'));

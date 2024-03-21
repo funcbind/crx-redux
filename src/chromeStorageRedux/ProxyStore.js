@@ -1,60 +1,31 @@
-import { LocalStorage } from '../chromeStorage/storageLib';
+import { LocalStorage } from '../chromeStorage/BrowserStorage';
 import {
 	COMMUNICATION_MESSAGE_IDS,
-	EXTENSIONS_CONTEXTS,
 	CHROME_STORAGE_KEY_FOR,
 	CHROME_REDUX_CONSTANTS,
-} from './contants';
-import { getBrowserAPI, isPlainObject, shallowDiff } from './utils';
-import deepEql from 'deep-eql';
+} from './constants';
+import { getBrowserAPI, getContextType, isPlainObject } from './utils';
+// import browser from 'webextension-polyfill';
 
-const defaultOpts = {
-	patchStrategy: shallowDiff,
-};
-
-export default class ProxyStore {
+class ProxyStore {
+	#browserApi;
 	#executionContext;
 	#subsriptionListeners = [];
-	#browserAPI;
 	#browserRuntimeConnectPort;
-	#browserRuntimeSendMessage;
-	#browserRuntimeOnMessage;
 	// members for store ready method
 	proxyStoreReadyPromise;
 	#proxyStoreReadyResolver;
 	#isProxyStoreReady = false;
 	// Strategy 2.0 - For state updates & subscription broadcast retrieval from background store
-	#patchStrategy;
-	#proxyState = {}; // 2nd implementation case for getState
 
-	constructor(
-		context,
-		sendMessage,
-		onMessage,
-		options = {
-			patchStrategy: defaultOpts.patchStrategy,
-		}
-	) {
+	constructor(context) {
 		if (!context) {
 			throw new Error(
 				`context {String} argument  is required. context should be "popup","options","content-script"`
 			);
 		}
-
-		if (typeof sendMessage !== 'function') {
-			throw new Error(`sendMessage {Function} argument  is required`);
-		}
-
-		if (typeof onMessage !== 'function') {
-			throw new Error(`onMessage {Function} argument  is required`);
-		}
-
 		this.#executionContext = context;
-
-		this.#browserAPI = getBrowserAPI();
-		this.#browserRuntimeSendMessage = this.#browserAPI.runtime.sendMessage;
-		this.#browserRuntimeOnMessage = this.#browserAPI.runtime.onMessage;
-		this.#patchStrategy = options.patchStrategy;
+		this.#browserApi = getBrowserAPI();
 
 		this.proxyStoreReadyPromise = new Promise((resolve) => {
 			this.#proxyStoreReadyResolver = resolve;
@@ -62,41 +33,36 @@ export default class ProxyStore {
 
 		// Direct messaging ( one time request/messaging ) for listening to ready state
 		// Store Readiness for content scripts
-		if (this.#browserRuntimeOnMessage) {
-			this.#browserRuntimeOnMessage(() => this.#safetyHandler());
-		}
+		// if (this.#browserApi.runtime.onMessage) {
+		// 	this.#browserApi.runtime.onMessage.addListener(() =>
+		// 		this.#safetyHandler()
+		// 	);
+		// }
 		// this.#connectWithBackendRealStore(context);
 		console.log(
 			`proxyStore.js - Initializing Proxy Store for ${context} context`
 		);
 
-		this.#listenToBackgroundStoreSubscriptionBroadcast();
-		// Making connection with background store ( Long lived connection ) for getting
-		// Latest state updates whenever background store subsribe runs
-		// State updates happen via state diffs patching
-		// If no diff -> no state updates
-		this.#browserRuntimeConnectPort = this.#browserAPI.runtime.connect(null, {
-			name: `${CHROME_REDUX_CONSTANTS.BACKGROUND_STORE_CONNECTION_PORT_NAME}-${context}`,
-		});
-
-		// 2nd Implementation for getState
-		// Getting state differences from backend store using port communication
-		// and patching them here with local proxy state
-		this.#browserRuntimeConnectPort.onMessage.addListener(
-			this.#backgroundStorePortMessageHandler.bind(this)
+		this.#browserApi.runtime.onMessage.addListener(
+			this.#backgroundStoreRuntimeMessageListener.bind(this)
 		);
+
+		// Making port connection to background store to receive background store
+		// ready status
+		// this.#browserRuntimeConnectPort = browser.runtime.connect(null, {
+		// 	name: `${CHROME_REDUX_CONSTANTS.BACKGROUND_STORE_CONNECTION_PORT_NAME}-${context}`,
+		// });
+
+		this.#checkBackgroundStoreExistence();
+
+		// this.#browserRuntimeConnectPort.onMessage.addListener(
+		// 	this.#backgroundStoreMessagesListenerViaPort.bind(this)
+		// );
 	}
 
 	// From anypart
 	async dispatch(action) {
 		this.#checkStoreReadiness('dispatch');
-
-		// Earlier implementation using webext-bridge
-		// const response = await this.#browserRuntimeSendMessage(
-		// 	COMMUNICATION_MESSAGE_IDS.DISPATCH_TO_STORE,
-		// 	action,
-		// 	EXTENSIONS_CONTEXTS.BACKGROUND
-		// );
 
 		if (!isPlainObject(action)) {
 			throw new Error(`DispatchAction object should be plain object`);
@@ -106,43 +72,44 @@ export default class ProxyStore {
 			throw new Error(`Dispatch Action type should be string`);
 		}
 
-		if (action.payload && !isPlainObject(action.payload)) {
-			throw new Error(`Dispatch Action payload should be plain object`);
-		}
+		// const response = await this.#browserRuntimeConnectPort.postMessage({
+		// 	type: COMMUNICATION_MESSAGE_IDS.DISPATCH_TO_STORE,
+		// 	action: action,
+		// });
 
-		const response = await this.#browserRuntimeConnectPort.postMessage({
-			type: COMMUNICATION_MESSAGE_IDS.DISPATCH_TO_STORE,
-			action: action,
-		});
+		return new Promise((resolve) => {
+			this.#browserApi.runtime.sendMessage(
+				{
+					type: COMMUNICATION_MESSAGE_IDS.DISPATCH_TO_STORE,
+					action: action,
+				},
+				(response) => {
+					console.log(`dispatch() - response`, response);
+					const lastError = this.#browserApi.runtime.lastError;
+					const responseError = response.error;
 
-		if (response.error) {
-			console.error(response.error);
-			throw new Error(
-				`Some error while dispatching action to main store in the background from ${
-					this.#executionContext
-				}`
+					if (!lastError && !responseError) {
+						resolve(response);
+					} else {
+						throw new Error(responseError ? responseError : lastError);
+					}
+				}
 			);
-		}
-		return response;
+		});
 	}
 
 	async getState() {
 		this.#checkStoreReadiness('getState');
-		const strategy2state = this.#proxyState;
+		// const strategy2state = this.#proxyStateStrategy2;
 		const latestStateFromStorage =
 			await this.#getStateDirectlyFromChromeStorage();
 
-		console.log(
-			`Strategy 1.0 State : `,
-			latestStateFromStorage,
-			`Strategy 2.0 State : `,
-			strategy2state
-		);
+		// console.log(`getState() : Latest State is`, latestStateFromStorage);
 
-		this.#compareStatesFromBothStrategies(
-			latestStateFromStorage,
-			strategy2state
-		);
+		// this.#compareStatesFromBothStrategies(
+		// 	latestStateFromStorage,
+		// 	strategy2state
+		// );
 		return latestStateFromStorage;
 	}
 
@@ -169,22 +136,40 @@ export default class ProxyStore {
 		return this.proxyStoreReadyPromise;
 	}
 
-	#listenToBackgroundStoreSubscriptionBroadcast() {
-		this.#browserRuntimeOnMessage((message) => {
-			if (
-				message.type ===
-				COMMUNICATION_MESSAGE_IDS.BACKGROUND_SUBSCRIPTION_BROADCAST
-			) {
-				console.log(
-					`listenToBackgroundStoreSubscriptionBroadcast() - background store subscription broadcast received successfully`
-				);
-				console.log(
-					`Inside background store subscription broadcast listener`,
-					this
-				);
-				this.#subsriptionListeners.forEach((l) => l());
+	async #checkBackgroundStoreExistence() {
+		this.#browserApi.runtime.sendMessage(
+			{
+				type: COMMUNICATION_MESSAGE_IDS.CHECK_STORE_EXISTENCE,
+			},
+			(response) => {
+				const lastError = this.#browserApi.runtime.lastError;
+				console.log(`checkBackgroundStoreExistence() - response`, response);
+
+				if (response === COMMUNICATION_MESSAGE_IDS.BACKGROUND_STORE_AVAILABLE) {
+					this.#onBackgroundStoreReadyHandler();
+				}
+
+				if (lastError) {
+					throw new Error(
+						`Some error occured in checking background store existence. Error Message : ${lastError}`
+					);
+				}
 			}
-		});
+		);
+	}
+
+	#backgroundStoreRuntimeMessageListener(message, sender, sendResponse) {
+		console.log(`backgroundStoreRuntimeMessageListener() - message`, message);
+		switch (message.type) {
+			case COMMUNICATION_MESSAGE_IDS.STORE_SUBSCRIPTION_BROADCAST:
+				console.log(
+					`backgroundStoreRuntimeMessageListener() - Subscription broadcast received`
+				);
+
+				this.#subsriptionListeners.forEach((l) => l());
+				sendResponse(`STORE BROADCAST RECEIVED AT : ${this.#executionContext}`);
+				break;
+		}
 	}
 
 	// Strategy 1.0 - Directly getting latest state from chrome storage
@@ -201,69 +186,29 @@ export default class ProxyStore {
 		return currentState;
 	}
 
-	#backgroundStorePortMessageHandler(message) {
+	#backgroundStoreMessagesListenerViaPort(message) {
 		console.log(
 			`backgroundStorePortMessageHandler() - Inside port connection message handler`,
-			message,
-			arguments
-		);
-		if (message.type === COMMUNICATION_MESSAGE_IDS.BACKGROUND_STORE_READY) {
-			console.log(
-				`backgroundStorePortMessageHandler() - Background store is ready now`
-			);
-			if (!this.#isProxyStoreReady) {
-				this.#isProxyStoreReady = true;
-				this.#proxyStoreReadyResolver();
-			}
-			// after background store is ready run subscribers
-			this.#subsriptionListeners.forEach((l) => l());
-		} else {
-			this.#handleLatestStateUpdates(message);
-		}
-	}
-
-	// STRATEGY 2.0 - For state updates & subscription handling from background store
-	#handleLatestStateUpdates(message) {
-		console.info(
-			`handleLatestStateUpdates() - handling latest state updates recieved from background store on port connection 
-			for initial state & on every subscribe for subsequent state updates\n`,
-			`message : `,
 			message
 		);
 
 		switch (message.type) {
-			case COMMUNICATION_MESSAGE_IDS.STATE_TYPE: {
-				const initialState = message.payload;
-				this.#proxyState = initialState;
-
-				console.log(
-					`handleLatestStateUpdates() - Initial state received post successful port connection: `,
-					initialState,
-					this.#proxyState
-				);
-				// Most important - Uncomment below code if we decide on actually using Strategy 2.0
-
-				// if (!this.#isProxyStoreReady) {
-				// 	this.#isProxyStoreReady = true;
-				// 	this.#proxyStoreReadyResolver();
-				// }
-				// this.#subsriptionListeners.forEach((l) => l());
+			case COMMUNICATION_MESSAGE_IDS.BACKGROUND_STORE_READY:
+				this.#onBackgroundStoreReadyHandler();
 				break;
-			}
-
-			case COMMUNICATION_MESSAGE_IDS.PATCH_STATE_TYPE: {
-				const stateDifferences = message.payload;
-				this.#proxyState = this.#patchStrategy(this.state, stateDifferences);
-				console.log(
-					`handleLatestStateUpdates() - Patch state received background store subsciption update retrieval: `,
-					stateDifferences,
-					this.#proxyState
-				);
-				// For now we are using patch state only as a comparison method to actual getState
-				// this.#subsriptionListeners.forEach((l) => l());
-				break;
-			}
 		}
+	}
+
+	#onBackgroundStoreReadyHandler() {
+		console.log(
+			`onBackgroundStoreReadyHandler() - Background store is ready now`
+		);
+		if (!this.#isProxyStoreReady) {
+			this.#isProxyStoreReady = true;
+			this.#proxyStoreReadyResolver();
+		}
+		// after background store is ready run subscribers
+		this.#subsriptionListeners.forEach((l) => l());
 	}
 
 	#checkStoreReadiness(caller) {
@@ -283,35 +228,26 @@ export default class ProxyStore {
 				console.error('subscribe() - Cannot subsribe to state changes');
 			}
 
-			throw new Error(`Proxy Store is not ready
-				- Most possible reason - Background Store using createPersistentStore is not yet created or 
+			throw new Error(`
+			Proxy Store is not ready - Most possible reasons 
+				1. Proxy Store is used before & outside ready method of the store
+				2. Background Store using createPersistentStore is not yet created or 
 				not successfully created i.e resulted in some error
-				- Solution : Background store needs to be created first using createPersistentStore before using proxy store``
-			`);
-		}
-	}
-
-	#compareStatesFromBothStrategies(strategy1State, strategy2State) {
-		const areBothStrategiesStatesSame = deepEql(strategy1State, strategy2State);
-
-		if (!areBothStrategiesStatesSame) {
-			console.error(
-				`Both strategies states are not same. This is not expected.`
-			);
+			Solution : Background store needs to be created first using createPersistentStore before using proxy store`);
 		}
 	}
 
 	// Direct messaging ( one time request/messaging ) for listening to ready state
 	// Store readiness for content scripts
 	#safetyHandler(message) {
-		console.log(`safetyHandler() - Inside safety handler`, this);
 		if (
 			message.type === COMMUNICATION_MESSAGE_IDS.BACKGROUND_STORE_READY &&
 			message.portName ===
 				CHROME_REDUX_CONSTANTS.BACKGROUND_STORE_CONNECTION_PORT_NAME
 		) {
+			console.log(`safetyHandler() - Inside safety handler`, this);
 			// Remove Saftey Listener
-			this.#browserRuntimeOnMessage.removeListener(this.#safetyHandler);
+			this.#browserApi.runtime.onMessage.removeListener(this.#safetyHandler);
 
 			// Resolve if readyPromise has not been resolved.
 			if (!this.#isProxyStoreReady) {
@@ -320,57 +256,14 @@ export default class ProxyStore {
 			}
 		}
 	}
+}
 
-	/* 
-		Deprecated functions
-	*/
-
-	// async #connectWithBackendRealStore(context) {
-	// 	const response = await this.#sendMessage(
-	// 		COMMUNICATION_MESSAGE_IDS.CHECK_STORE_EXISTENCE,
-	// 		{},
-	// 		EXTENSIONS_CONTEXTS.BACKGROUND
-	// 	);
-
-	// 	console.log(`Background store exists, Proxy store is now ready`, response);
-
-	// 	this.#proxyStoreReadyResolver();
-	// 	this.#isProxyStoreReady = true;
-
-	// 	this.#onMessage(
-	// 		COMMUNICATION_MESSAGE_IDS.SUBSCRIBE_TO_STORE_CHANGES,
-	// 		(messageObj) => {
-	// 			const { data } = messageObj;
-	// 			const { action, latestState } = data;
-	// 			// console.log(
-	// 			// 	`proxyStore.js : Inside subscription listener`,
-	// 			// 	action,
-	// 			// 	latestState
-	// 			// );
-	// 			if (this.#subsriptionListeners.length > 0) {
-	// 				this.#subsriptionListeners.forEach((listener) =>
-	// 					listener(action, latestState)
-	// 				);
-	// 			}
-	// 		}
-	// 	);
-	// }
-
-	async #getStateFromBackgroundStoreViaMessaging() {
-		const response = await this.#browserRuntimeSendMessage(
-			COMMUNICATION_MESSAGE_IDS.GET_LATEST_STORE_STATE,
-			{},
-			EXTENSIONS_CONTEXTS.BACKGROUND
-		);
-		if (response.error) {
-			console.error(`Some error occurred while get state from main store in the background from
-			${this.#executionContext}`);
-			console.error(`Possible root cause - Calling getState after calling dispatch function without await
-				Possible Solution : Add await before calling dispatch if we need to immediately call getState after that
-			`);
-			throw new Error(response.error);
-		}
-		const { data } = response;
-		return data;
+let proxyStore;
+export default function getProxyStore() {
+	if (!proxyStore) {
+		const appContext = getContextType();
+		proxyStore = new ProxyStore(appContext);
 	}
+
+	return proxyStore;
 }

@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
-import isPlainObject from 'is-plain-obj';
+import { isPlainObject } from '../chromeStorageRedux/utils';
 
-console.log(`Inside StorageWrapper file : `, process.env.NODE_ENV);
+// console.log(`Inside StorageWrapper file : `, process.env.NODE_ENV);
 const isDevEnvironment = process.env.NODE_ENV === 'development';
 
 class BrowserStorage {

@@ -7,7 +7,7 @@ import viteLogo from '/vite.svg';
 import './options.scss';
 import { addCopiedItem } from '../common/clipboardItemsReducer';
 
-export default function Options() {
+export default function Options({ proxyStore }) {
 	const [count, setCount] = useState(0);
 
 	async function handleCountBtnClick() {
@@ -19,7 +19,7 @@ export default function Options() {
 		// 	'content-script'
 		// );
 		// console.log(`Data received back from background : `, dataFromBackground);
-		testStoreAccess(count);
+		testStoreAccess(count, proxyStore);
 	}
 
 	return (
@@ -52,11 +52,15 @@ export default function Options() {
 	);
 }
 
-async function testStoreAccess(count) {
-	// const response = await OptionsProxyStore.dispatch(
-	// 	addCopiedItem(`Copied Text : ${count}`)
-	// );
-	// const latestState = await OptionsProxyStore.getState();
-	// const response = await ProxyStore.getState();
-	// console.log(`Options.jsx - Latest state post dispatch : `, latestState);
+async function testStoreAccess(count, proxyStore) {
+	const dispatchResponse = await proxyStore.dispatch(
+		addCopiedItem(`Copied Text : ${count}`)
+	);
+	const latestState = await proxyStore.getState();
+	console.log(
+		`testStoreAccess() : dispatchResponse - `,
+		dispatchResponse,
+		`\nlatestState - `,
+		latestState
+	);
 }

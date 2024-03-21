@@ -4,16 +4,20 @@
 	"version": "1.0.0",
 	"action": { "default_popup": "src/popup/index.html" },
 	"options_page": "src/options/index.html",
-	"permissions": ["storage", "unlimitedStorage"],
+	"permissions": ["storage", "unlimitedStorage", "tabs"],
 	"content_scripts": [
 		{
 			"matches": ["*://*.gitlab.com/*"],
-			"js": ["src/contentScripts/allWebPages.jsx"],
+			"js": [
+				"src/browser-polyfill.min.js",
+				"src/contentScripts/allWebPages.jsx"
+			],
 			"run_at": "document_end"
 		}
 	],
 	"devtools_page": "src/devtool/devtools.html",
 	"background": {
+		"scripts": ["src/browser-polyfill.min.js"],
 		"service_worker": "src/background/background.js",
 		"type": "module"
 	}

@@ -1,4 +1,6 @@
-import { CHROME_REDUX_CONSTANTS, EXTENSIONS_CONTEXTS } from './contants';
+/* eslint-disable no-undef */
+import { CHROME_REDUX_CONSTANTS, EXTENSIONS_CONTEXTS } from './constants';
+// import browser from 'webextension-polyfill';
 
 const randomString = () =>
 	Math.random().toString(36).substring(7).split('').join('.');
@@ -137,4 +139,68 @@ export function shallowDiff(oldObj, newObj) {
 	});
 
 	return difference;
+}
+
+export function getContextType() {
+	const browser = getBrowserAPI();
+	const manifest = browser.runtime.getManifest();
+
+	// console.log(`manifest`, manifest);
+
+	const isContentScript = Boolean(
+		!browser.tabs && browser.extension && browser.runtime.getURL
+	);
+	const isOffscreen = Boolean(
+		!browser.tabs && !browser.extension && browser.runtime.getURL
+	);
+	const isOptionsPage =
+		Boolean(browser.tabs) &&
+		location.href ===
+			browser.runtime.getURL(
+				manifest.options_page || manifest.options_ui?.page || ''
+			);
+	// this will be wrong when using browser.action.setPopup with a different path
+	const isPopupPage =
+		Boolean(browser.tabs) &&
+		location.href ===
+			browser.runtime.getURL(
+				(manifest.action || manifest.browser_action)?.default_popup
+			);
+	const isDevtools = Boolean(browser.devtools);
+
+	const getBackgroundPageFn = browser.extension?.getBackgroundPage;
+	const isBackgroundPage =
+		manifest.manifest_version === 3
+			? typeof ServiceWorkerGlobalScope === 'function'
+			: getBackgroundPageFn === window;
+
+	const activeContexts = {
+		[EXTENSIONS_CONTEXTS.CONTENT_SCRIPT]: isContentScript,
+		[EXTENSIONS_CONTEXTS.OFFSCREEN]: isOffscreen,
+		[EXTENSIONS_CONTEXTS.OPTIONS]: isOptionsPage,
+		[EXTENSIONS_CONTEXTS.POPUP]: isPopupPage,
+		[EXTENSIONS_CONTEXTS.DEVTOOLS]: isDevtools,
+		[EXTENSIONS_CONTEXTS.BACKGROUND]: isBackgroundPage,
+	};
+
+	// console.log(`Utils -> getContextType() :  Active Contexts: `, activeContexts);
+
+	let contextType = '';
+
+	for (let [key, value] of Object.entries(activeContexts)) {
+		if (value) {
+			contextType = key;
+			break;
+		}
+	}
+
+	if (contextType === '') {
+		throw new Error(
+			`Utils -> getContextType() : Right context not found : Some Testing Method Failed`
+		);
+	}
+
+	// console.log(`Utils.js : getContextType() - contextType : `, contextType);
+
+	return contextType;
 }
