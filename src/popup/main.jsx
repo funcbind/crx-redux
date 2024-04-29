@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { Provider } from 'react-redux';
 import Popup from './Popup.jsx';
 import '../index.css';
 import getProxyStore from '../chromeStorageRedux/ProxyStore.js';
@@ -14,7 +15,9 @@ async function subscribeToPersistentStoreChanges() {
 		console.log(`Popup - main.jsx Context : Proxy Store is now ready`);
 		ReactDOM.createRoot(document.getElementById('root')).render(
 			<React.StrictMode>
-				<Popup proxyStore={proxyStore} />
+				<Provider store={proxyStore}>
+					<Popup proxyStore={proxyStore} />
+				</Provider>
 			</React.StrictMode>
 		);
 	});

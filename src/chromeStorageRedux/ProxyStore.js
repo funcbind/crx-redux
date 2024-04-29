@@ -10,12 +10,13 @@ import { getBrowserAPI, getContextType, isPlainObject } from './utils';
 class ProxyStore {
 	#browserApi;
 	#executionContext;
-	#subsriptionListeners = [];
+	#subscriptionListeners = [];
 	#browserRuntimeConnectPort;
 	// members for store ready method
 	proxyStoreReadyPromise;
 	#proxyStoreReadyResolver;
 	#isProxyStoreReady = false;
+	#localState = {};
 	// Strategy 2.0 - For state updates & subscription broadcast retrieval from background store
 
 	constructor(context) {
@@ -83,12 +84,13 @@ class ProxyStore {
 					type: COMMUNICATION_MESSAGE_IDS.DISPATCH_TO_STORE,
 					action: action,
 				},
-				(response) => {
+				async (response) => {
 					console.log(`dispatch() - response`, response);
 					const lastError = this.#browserApi.runtime.lastError;
 					const responseError = response.error;
 
 					if (!lastError && !responseError) {
+						// await this.#setLocalStateUsingChromeStorage();
 						resolve(response);
 					} else {
 						throw new Error(responseError ? responseError : lastError);
@@ -101,8 +103,8 @@ class ProxyStore {
 	async getState() {
 		this.#checkStoreReadiness('getState');
 		// const strategy2state = this.#proxyStateStrategy2;
-		const latestStateFromStorage =
-			await this.#getStateDirectlyFromChromeStorage();
+		// const latestStateFromStorage =
+		// 	await this.#getStateDirectlyFromChromeStorage();
 
 		// console.log(`getState() : Latest State is`, latestStateFromStorage);
 
@@ -110,7 +112,7 @@ class ProxyStore {
 		// 	latestStateFromStorage,
 		// 	strategy2state
 		// );
-		return latestStateFromStorage;
+		return this.#localState;
 	}
 
 	subscribe(listener) {
@@ -119,13 +121,14 @@ class ProxyStore {
 			throw new Error(`Subscribe function requires a function as an argument`);
 		}
 
-		this.#subsriptionListeners.push(listener);
+		const subscriptionListeners = this.#subscriptionListeners;
+		subscriptionListeners.push(listener);
 
 		return function unsubscribe() {
-			this.#subsriptionListeners = this.#subsriptionListeners.filter(
+			this.#subscriptionListeners = subscriptionListeners.filter(
 				(l) => l !== listener
 			);
-		};
+		}.bind(this);
 	}
 
 	async ready(cb) {
@@ -141,15 +144,19 @@ class ProxyStore {
 			{
 				type: COMMUNICATION_MESSAGE_IDS.CHECK_STORE_EXISTENCE,
 			},
-			(response) => {
+			async (response) => {
 				const lastError = this.#browserApi.runtime.lastError;
 				console.log(`checkBackgroundStoreExistence() - response`, response);
 
 				if (response === COMMUNICATION_MESSAGE_IDS.BACKGROUND_STORE_AVAILABLE) {
-					this.#onBackgroundStoreReadyHandler();
+					if (!this.#isProxyStoreReady) {
+						await this.#setLocalStateUsingChromeStorage();
+						this.#onBackgroundStoreReadyHandler();
+					}
 				}
 
 				if (lastError) {
+					console.log(lastError);
 					throw new Error(
 						`Some error occured in checking background store existence. Error Message : ${lastError}`
 					);
@@ -158,17 +165,26 @@ class ProxyStore {
 		);
 	}
 
-	#backgroundStoreRuntimeMessageListener(message, sender, sendResponse) {
+	async #backgroundStoreRuntimeMessageListener(message, sender, sendResponse) {
 		console.log(`backgroundStoreRuntimeMessageListener() - message`, message);
 		switch (message.type) {
 			case COMMUNICATION_MESSAGE_IDS.STORE_SUBSCRIPTION_BROADCAST:
 				console.log(
 					`backgroundStoreRuntimeMessageListener() - Subscription broadcast received`
 				);
-
-				this.#subsriptionListeners.forEach((l) => l());
+				await this.#setLocalStateUsingChromeStorage();
+				this.#subscriptionListeners.forEach((l) => l());
 				sendResponse(`STORE BROADCAST RECEIVED AT : ${this.#executionContext}`);
 				break;
+
+			case COMMUNICATION_MESSAGE_IDS.BACKGROUND_STORE_READY:
+				console.log(
+					`backgroundStoreRuntimeMessageListener() - Background store is ready!`
+				);
+				if (!this.#isProxyStoreReady) {
+					await this.#setLocalStateUsingChromeStorage();
+					this.#onBackgroundStoreReadyHandler();
+				}
 		}
 	}
 
@@ -184,6 +200,15 @@ class ProxyStore {
 		}
 
 		return currentState;
+	}
+
+	async #setLocalStateUsingChromeStorage() {
+		const currentState = await this.#getStateDirectlyFromChromeStorage();
+		console.log(
+			`Inside setLocalStateUsingChromeStorage : Setting local state to : `,
+			currentState
+		);
+		this.#localState = currentState;
 	}
 
 	#backgroundStoreMessagesListenerViaPort(message) {
@@ -208,7 +233,7 @@ class ProxyStore {
 			this.#proxyStoreReadyResolver();
 		}
 		// after background store is ready run subscribers
-		this.#subsriptionListeners.forEach((l) => l());
+		this.#subscriptionListeners.forEach((l) => l());
 	}
 
 	#checkStoreReadiness(caller) {

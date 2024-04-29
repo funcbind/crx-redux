@@ -1,20 +1,31 @@
 /* global chrome */
 
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import reactLogo from '../assets/react.svg';
 import './popup.scss';
 import viteLogo from '/vite.svg';
 // import PopupProxyStore from '../chromeStorageRedux/PopupProxyStore';
 import { addCopiedItem } from '../common/clipboardItemsReducer';
-import getProxyStore from '../chromeStorageRedux/proxyStore';
 
-function Popup({ proxyStore }) {
+// eslint-disable-next-line react/prop-types
+function Popup() {
 	const [count, setCount] = useState(0);
+	const dispatch = useDispatch();
 
 	async function handleCountBtnClick() {
 		console.log(`inside handleCountBtnClick function`);
 		setCount((count) => count + 1);
-		testStoreAccess(count, proxyStore);
+		// testStoreAccess(count, dispatch);
+		const dispatchResponse = await dispatch(
+			addCopiedItem(`Copied Text : ${count}`)
+		);
+		// const latestState = await proxyStore.getState();
+		console.log(
+			`testStoreAccess() : dispatchResponse - `,
+			dispatchResponse,
+			`\nlatestState - `
+		);
 	}
 
 	return (
@@ -47,17 +58,6 @@ function Popup({ proxyStore }) {
 	);
 }
 
-async function testStoreAccess(count, proxyStore) {
-	const dispatchResponse = await proxyStore.dispatch(
-		addCopiedItem(`Copied Text : ${count}`)
-	);
-	const latestState = await proxyStore.getState();
-	console.log(
-		`testStoreAccess() : dispatchResponse - `,
-		dispatchResponse,
-		`\nlatestState - `,
-		latestState
-	);
-}
+async function testStoreAccess(count, dispatch) {}
 
 export default Popup;

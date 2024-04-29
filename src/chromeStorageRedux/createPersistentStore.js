@@ -58,14 +58,14 @@ export default async function createPersistentStore(
 		return enhancer(createPersistentStore)(reducer, preloadedState);
 	}
 
-	let currentReducer = reducer;
-	let currentState = preloadedState;
+	let currentReducer = reducer; //
+	// let currentState = preloadedState; //
 	let currentListeners = new Map();
-	let actionQueue = [];
 	let nextListeners = currentListeners;
 	let listenerIdCounter = 0;
 	let isReducerExecuting = false;
-	let isPreviousDispatchExecuting = false;
+	let actionQueue = []; //
+	let isPreviousDispatchExecuting = false; //
 
 	/**
 	 * This makes a shallow copy of currentListeners so we can use
@@ -261,6 +261,7 @@ export default async function createPersistentStore(
 			let nonExistentPersistedState =
 				typeof lastPersistedState === 'undefined' ||
 				lastPersistedState === null;
+			let currentState;
 
 			// lastPersistedState can be undefined or null in 2 cases
 			// Case 1 - Stored state in chrome storage might have gotten deleted inadverdently
@@ -541,10 +542,10 @@ async function broadcastMessageToOtherParts(messageToBroadcast) {
 						type: messageToBroadcast,
 					},
 					(response) => {
-						console.log(
-							`Response from tabs for broadcast Message : ${messageToBroadcast} : `,
-							response
-						);
+						// console.log(
+						// 	`Response from tabs for broadcast Message : ${messageToBroadcast} : `,
+						// 	response
+						// );
 						const lastError = browser.runtime.lastError;
 						if (lastError) {
 							// console.warn(
@@ -565,7 +566,7 @@ async function broadcastMessageToOtherParts(messageToBroadcast) {
 			type: messageToBroadcast,
 		},
 		(response) => {
-			console.log(`broadcastMessageToOtherParts() - response`, response);
+			// console.log(`broadcastMessageToOtherParts() - response`, response);
 			const lastError = browser.runtime.lastError;
 
 			if (lastError) {
@@ -595,6 +596,8 @@ function connectWithOtherExtensionParts() {
 			);
 			// const { sender } = port;
 
+			// Strategy 2.0 2nd Implementation for getState (Updating State) & subscription broadcasting
+			await sendLatestStateUpdates(port, getState, subscribe); // For strategy 2.0
 			sendStoreReadyUpdateToConnectedContext(port, connectedExtensionContext);
 
 			// addRemoveActiveContextFromStorage(connectedExtensionContext, sender);

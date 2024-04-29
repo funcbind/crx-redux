@@ -8,16 +8,12 @@
 	"content_scripts": [
 		{
 			"matches": ["*://*.gitlab.com/*"],
-			"js": [
-				"src/browser-polyfill.min.js",
-				"src/contentScripts/allWebPages.jsx"
-			],
+			"js": ["src/contentScripts/allWebPages.jsx"],
 			"run_at": "document_end"
 		}
 	],
 	"devtools_page": "src/devtool/devtools.html",
 	"background": {
-		"scripts": ["src/browser-polyfill.min.js"],
 		"service_worker": "src/background/background.js",
 		"type": "module"
 	}
