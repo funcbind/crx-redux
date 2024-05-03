@@ -185,8 +185,26 @@ export function getContextType() {
 
 	// console.log(`Utils -> getContextType() :  Active Contexts: `, activeContexts);
 
-	let contextType = '';
+	const activeContextsCount = Object.values(activeContexts).filter(
+		(activeContext) => Boolean(activeContext)
+	);
 
+	const moreThanOneActiveContext = activeContextsCount.length > 1;
+	const noActiveContext = activeContextsCount.length === 0;
+
+	if (moreThanOneActiveContext) {
+		throw new Error(
+			`Utils -> getContextType() : Multiple active contexts found : Some Testing Method Failed`
+		);
+	}
+
+	if (noActiveContext) {
+		throw new Error(
+			`Utils -> getContextType() : No active context found : Some Testing Method Failed`
+		);
+	}
+
+	let contextType = '';
 	for (let [key, value] of Object.entries(activeContexts)) {
 		if (value) {
 			contextType = key;

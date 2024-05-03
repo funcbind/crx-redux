@@ -58,14 +58,14 @@ export default async function createPersistentStore(
 		return enhancer(createPersistentStore)(reducer, preloadedState);
 	}
 
-	let currentReducer = reducer; //
+	let currentReducer = reducer; // required - for replaceReducer() - otherwise we can remove it
 	// let currentState = preloadedState; //
 	let currentListeners = new Map();
 	let nextListeners = currentListeners;
 	let listenerIdCounter = 0;
-	let isReducerExecuting = false;
-	let actionQueue = []; //
-	let isPreviousDispatchExecuting = false; //
+	let isReducerExecuting = false; // required - dispatch(), getState(), subscribe(), unsubscribe()
+	let actionQueue = []; // required - dispatch() method
+	let isPreviousDispatchExecuting = false; // required dispatch method()
 
 	/**
 	 * This makes a shallow copy of currentListeners so we can use
@@ -200,7 +200,7 @@ export default async function createPersistentStore(
 	 * Note that, if you use a custom middleware, it may wrap `dispatch()` to
 	 * return something else (for example, a Promise you can await).
 	 */
-	async function dispatch(action, lastDeferredActionPromise) {
+	async function dispatch(action, lastDeferredActionPromise, executionContext) {
 		const isInitializationAction = action.type === ActionTypes.INIT;
 		// console.log(
 		// 	`${
@@ -346,9 +346,16 @@ export default async function createPersistentStore(
 			listener();
 		});
 
-		broadcastMessageToOtherParts(
-			COMMUNICATION_MESSAGE_IDS.STORE_SUBSCRIPTION_BROADCAST
-		);
+		// putting broadcastMessageToOtherParts inside setTimeout so that
+		// 1. dispatch can first return promise and then broadcast message
+		// 2. proxy stores dispatch returns first and then broadcast happens
+		setTimeout(() => {
+			broadcastMessageToOtherParts(
+				'STORE_SUBSCRIPTION_BROADCAST',
+				isInitializationAction,
+				executionContext
+			);
+		}, 0);
 		// broadcastStoreSubscriptionToActiveContexts(action);
 
 		// 2. APPROACH 2 - IF LISTENERS DON'T WORK - USE PUB SUB
@@ -458,14 +465,18 @@ export default async function createPersistentStore(
 	await dispatch({ type: ActionTypes.INIT });
 
 	// connectWithOtherExtensionParts();
-	storeExistenceCallsFromOtherPartsListener();
-	dispatchCallsFromOtherPartsListener(dispatch);
-	// precautionary step to make sure store ready message reaches to content scripts
-	// in case store readiness message from port connection ( sendBackgroundStoreConnectedUpdate ())
-	// fails
-	broadcastMessageToOtherParts(
-		COMMUNICATION_MESSAGE_IDS.BACKGROUND_STORE_READY
-	);
+	listenToStoreExistenceCallFromOtherContexts();
+	listenToDispatchCallsFromOtherContexts(dispatch);
+
+	/* 
+		precautionary step to make sure store ready message reaches to content scripts
+		in case store readiness message from port connection ( sendBackgroundStoreConnectedUpdate ())
+		fails
+		** DON'T NEED BELOW METHOD AS INIT DISPATCH ACTION TAKES CARE OF TELLING OTHER PARTS THAT THE STORE IS READY 
+	*/
+	// broadcastMessageToOtherParts(
+	// 	'BACKGROUND_STORE_READY'
+	// );
 	// lateStoreInitializationReadyUpdateBroadcast(); -- Used broadcastMessageToOtherParts instead of it
 
 	const store = {
@@ -478,16 +489,17 @@ export default async function createPersistentStore(
 	return store;
 }
 
-function dispatchCallsFromOtherPartsListener(dispatch) {
+function listenToDispatchCallsFromOtherContexts(dispatch) {
 	const browser = getBrowserAPI();
 	browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 		if (message.type === COMMUNICATION_MESSAGE_IDS.DISPATCH_TO_STORE) {
-			dispatch(message.action)
+			let { action, context } = message;
+			dispatch(action, null, context)
 				.then((response) => {
-					console.log(
-						`dispatchCallsFromOtherPartsListener() - response`,
-						response
-					);
+					// console.log(
+					// 	`dispatchCallsFromOtherPartsListener() - response`,
+					// 	response
+					// );
 					sendResponse(response); // return response;
 				})
 				.catch((e) => {
@@ -501,7 +513,7 @@ function dispatchCallsFromOtherPartsListener(dispatch) {
 	});
 }
 
-function storeExistenceCallsFromOtherPartsListener() {
+function listenToStoreExistenceCallFromOtherContexts() {
 	const browser = getBrowserAPI();
 	browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 		if (message.type === COMMUNICATION_MESSAGE_IDS.CHECK_STORE_EXISTENCE) {
@@ -510,14 +522,36 @@ function storeExistenceCallsFromOtherPartsListener() {
 	});
 }
 
-async function broadcastMessageToOtherParts(messageToBroadcast) {
+async function broadcastMessageToOtherParts(
+	broadcastMessage,
+	isInitActionDispatchBroadcast,
+	executionContext = ''
+) {
 	// broadcasting to all content scripts
 	const extensionId = chrome.runtime.id;
+	const broadcastMessageCode = COMMUNICATION_MESSAGE_IDS[broadcastMessage];
 
-	console.log(
-		`broadcastMessageToOtherParts() - messageToBroadcast`,
-		messageToBroadcast
-	);
+	if (!broadcastMessageCode) {
+		throw new Error(
+			`broadcastMessageToOtherParts() - Broadcast Message Code Not found : ${broadcastMessage}`
+		);
+	}
+
+	if (isInitActionDispatchBroadcast) {
+		console.log(
+			`broadcastMessageToOtherParts() - INIT Action Dispatch Broadcast`,
+			broadcastMessage,
+			` ==== Execution Context : `,
+			executionContext
+		);
+	} else {
+		// console.log(
+		// 	`broadcastMessageToOtherParts() - Message To Broadcast`,
+		// 	broadcastMessage,
+		// 	`  === Execution Context : `,
+		// 	executionContext
+		// );
+	}
 
 	const browser = getBrowserAPI();
 
@@ -539,7 +573,8 @@ async function broadcastMessageToOtherParts(messageToBroadcast) {
 				browser.tabs.sendMessage(
 					tabId,
 					{
-						type: messageToBroadcast,
+						type: broadcastMessageCode,
+						context: executionContext,
 					},
 					(response) => {
 						// console.log(
@@ -563,7 +598,8 @@ async function broadcastMessageToOtherParts(messageToBroadcast) {
 	// broadcast to all other parts
 	browser.runtime.sendMessage(
 		{
-			type: messageToBroadcast,
+			type: broadcastMessageCode,
+			context: executionContext,
 		},
 		(response) => {
 			// console.log(`broadcastMessageToOtherParts() - response`, response);
