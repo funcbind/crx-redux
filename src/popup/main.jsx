@@ -4,11 +4,30 @@ import { Provider } from 'react-redux';
 import Popup from './Popup.jsx';
 import '../index.css';
 import getProxyStore from '../chromeStorageRedux/ProxyStore.js';
-import { addCopiedItem } from '../common/clipboardItemsReducer.js';
+import {
+	addCopiedItem,
+	clearClipboard,
+} from '../common/clipboardItemsReducer.js';
 
 console.log(`This is the Popup file!!!`);
 
 const proxyStore = getProxyStore();
+
+proxyStore.subscribe(() => {
+	const latestState = proxyStore.getState();
+	console.log(
+		`Inside First ProxyStore.subscribe() - Latest state : `,
+		latestState
+	);
+});
+
+proxyStore.subscribe(() => {
+	const latestState = proxyStore.getState();
+	console.log(
+		`Inside Second ProxyStore.subscribe() - Latest state : `,
+		latestState
+	);
+});
 
 function testingWithReact() {
 	console.log(
@@ -37,25 +56,22 @@ async function testingWithoutReact() {
 		console.log(
 			`testingWithoutReact() - Popup Context : Proxy Store is now ready`
 		);
+		// await proxyStore.dispatch(clearClipboard());
+		const latestState1 = proxyStore.getState();
+		console.log(`Latest state 1 : `, latestState1);
 
-		proxyStore.subscribe(() => {
-			const latestState = proxyStore.getState();
-			console.log(
-				`Inside ProxyStore.subscribe() - Latest state : `,
-				latestState
-			);
-		});
+		// await proxyStore.dispatch(addCopiedItem('Copied Text 1'));
+		// proxyStore.dispatch(addCopiedItem('Copied Text 2'));
+		// proxyStore.dispatch(addCopiedItem('Copied Text 3'));
+		// await proxyStore.dispatch(addCopiedItem('Copied Text 4'));
+		// proxyStore.dispatch(addCopiedItem('Copied Text 5'));
+		// proxyStore.dispatch(addCopiedItem('Copied Text 6'));
+		// proxyStore.dispatch(addCopiedItem('Copied Text 7'));
+		// proxyStore.dispatch(addCopiedItem('Copied Text 8'));
+		// await proxyStore.dispatch(addCopiedItem('Copied Text 7'));
 
-		const latestState = proxyStore.getState();
-		console.log(`testingWithoutReact() - Latest State : `, latestState);
-		await proxyStore.dispatch(addCopiedItem('Copied Text 1'));
-		await proxyStore.dispatch(addCopiedItem('Copied Text 2'));
-		await proxyStore.dispatch(addCopiedItem('Copied Text 3'));
-		const latestStatePostDispatch = proxyStore.getState();
-		console.log(
-			`testingWithoutReact() - Latest State : `,
-			latestStatePostDispatch
-		);
+		// const latestState3 = proxyStore.getState();
+		// console.log(`testingWithoutReact() - Latest State 3 : `, latestState3);
 	});
 }
 

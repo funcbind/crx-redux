@@ -34,7 +34,7 @@ const combinedReducer = combineReducers({
 });
 
 export async function createTestStore() {
-	clearPersistentStore();
+	// clearPersistentStore();
 	const store = await createPersistentStore(combinedReducer, preloadedState);
 	console.log(`Store created`, store);
 	return store;

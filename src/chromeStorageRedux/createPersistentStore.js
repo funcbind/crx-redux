@@ -346,16 +346,13 @@ export default async function createPersistentStore(
 			listener();
 		});
 
-		// putting broadcastMessageToOtherParts inside setTimeout so that
-		// 1. dispatch can first return promise and then broadcast message
-		// 2. proxy stores dispatch returns first and then broadcast happens
-		setTimeout(() => {
+		if (isInitializationAction) {
 			broadcastMessageToOtherParts(
 				'STORE_SUBSCRIPTION_BROADCAST',
-				isInitializationAction,
-				executionContext
+				executionContext,
+				isInitializationAction
 			);
-		}, 0);
+		}
 		// broadcastStoreSubscriptionToActiveContexts(action);
 
 		// 2. APPROACH 2 - IF LISTENERS DON'T WORK - USE PUB SUB
@@ -496,11 +493,12 @@ function listenToDispatchCallsFromOtherContexts(dispatch) {
 			let { action, context } = message;
 			dispatch(action, null, context)
 				.then((response) => {
-					// console.log(
-					// 	`dispatchCallsFromOtherPartsListener() - response`,
-					// 	response
-					// );
+					console.log(
+						`dispatchCallsFromOtherPartsListener() - response`,
+						response
+					);
 					sendResponse(response); // return response;
+					// broadcastMessageToOtherParts('STORE_SUBSCRIPTION_BROADCAST', context);
 				})
 				.catch((e) => {
 					console.error(`dispatchCallsFromOtherPartsListener() - error`, e);
@@ -524,8 +522,8 @@ function listenToStoreExistenceCallFromOtherContexts() {
 
 async function broadcastMessageToOtherParts(
 	broadcastMessage,
-	isInitActionDispatchBroadcast,
-	executionContext = ''
+	executionContext = '',
+	isInitActionDispatchBroadcast
 ) {
 	// broadcasting to all content scripts
 	const extensionId = chrome.runtime.id;

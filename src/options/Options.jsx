@@ -7,7 +7,7 @@ import viteLogo from '/vite.svg';
 import './options.scss';
 import { addCopiedItem } from '../common/clipboardItemsReducer';
 
-export default function Options({ proxyStore }) {
+export default function Options() {
 	const [count, setCount] = useState(0);
 
 	async function handleCountBtnClick() {
@@ -19,7 +19,7 @@ export default function Options({ proxyStore }) {
 		// 	'content-script'
 		// );
 		// console.log(`Data received back from background : `, dataFromBackground);
-		testStoreAccess(count, proxyStore);
+		testStoreAccess(count);
 	}
 
 	return (

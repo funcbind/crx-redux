@@ -52,7 +52,7 @@ function CreateProxyStore(context) {
 
 		console.log(
 			`dispatch() - Dispatching action from Proxy Store \n`,
-			JSON.stringify(action, null, 2)
+			action?.payload?.text
 		);
 		return new Promise((resolve) => {
 			browserApi.runtime.sendMessage(
@@ -67,8 +67,9 @@ function CreateProxyStore(context) {
 					const responseError = response.error;
 
 					if (!lastError && !responseError) {
-						await setLocalStateUsingChromeStorage();
+						await setLocalStateUsingChromeStorage('DISPATCH_SUCCESSFUL');
 						resolve(response);
+						subscriptionListeners.forEach((l) => l());
 					} else {
 						throw new Error(responseError ? responseError : lastError);
 					}
@@ -93,13 +94,20 @@ function CreateProxyStore(context) {
 	}
 
 	function subscribe(listener) {
-		checkStoreReadiness('subscribe');
+		// Checkstorereadiness should not be part of subscribe
+		// Subscriptions to store can added before the store is ready as well
+		// checkStoreReadiness('subscribe');
+
 		if (typeof listener !== 'function') {
 			throw new Error(`Subscribe function requires a function as an argument`);
 		}
 
 		subscriptionListeners.push(listener);
 
+		console.log(
+			`Inside subscribe function - Added new Store Listener`,
+			subscriptionListeners
+		);
 		return function unsubscribe() {
 			subscriptionListeners = subscriptionListeners.filter(
 				(l) => l !== listener
@@ -126,7 +134,7 @@ function CreateProxyStore(context) {
 
 				if (response === COMMUNICATION_MESSAGE_IDS.BACKGROUND_STORE_AVAILABLE) {
 					if (!isProxyStoreReady) {
-						await setLocalStateUsingChromeStorage();
+						await setLocalStateUsingChromeStorage('BACKGROUND_STORE_AVAILABLE');
 						onBackgroundStoreReadyHandler();
 					}
 				}
@@ -151,33 +159,29 @@ function CreateProxyStore(context) {
 		const { type, context = '' } = message;
 		switch (type) {
 			case COMMUNICATION_MESSAGE_IDS.STORE_SUBSCRIPTION_BROADCAST:
-				console.log(
-					`backgroundStoreRuntimeMessageListener() - Subscription broadcast received === Execution Context :`,
-					context
-				);
-
-				// only if different context from which dispatch was called
-				if (context !== executionContext) {
-					await setLocalStateUsingChromeStorage();
-				}
-
-				if (!isProxyStoreReady) {
-					isProxyStoreReady = true;
-					proxyStoreReadyStatePromiseResolver();
-				}
-				subscriptionListeners.forEach((l) => l());
 				sendResponse(`STORE BROADCAST RECEIVED AT : ${executionContext}`);
+				await onSubscriptionBroadcastReceivedHandler(context);
 				break;
+		}
+	}
 
-			// Most likely this case will never happen
-			// case COMMUNICATION_MESSAGE_IDS.BACKGROUND_STORE_READY:
-			// 	console.log(
-			// 		`backgroundStoreRuntimeMessageListener() - Background store is ready!`
-			// 	);
-			// 	if (!isProxyStoreReady) {
-			// 		await setLocalStateUsingChromeStorage();
-			// 		onBackgroundStoreReadyHandler();
-			// 	}
+	async function onSubscriptionBroadcastReceivedHandler(context) {
+		console.log(
+			`onSubscriptionBroadcastReceivedHandler() - Subscription broadcast received === Execution Context :`,
+			context
+		);
+
+		// for dispatch({ type: ActionTypes.INIT }); case
+		// background store late initialization
+		if (!isProxyStoreReady) {
+			isProxyStoreReady = true;
+			proxyStoreReadyStatePromiseResolver();
+		}
+
+		// only if different context from which dispatch was called
+		if (context !== executionContext) {
+			await setLocalStateUsingChromeStorage('STORE_SUBSCRIPTION_BROADCAST');
+			subscriptionListeners.forEach((l) => l());
 		}
 	}
 
@@ -193,11 +197,13 @@ function CreateProxyStore(context) {
 		return currentState;
 	}
 
-	async function setLocalStateUsingChromeStorage() {
+	async function setLocalStateUsingChromeStorage(callingScenario) {
 		const currentState = await getStateDirectlyFromChromeStorage();
 		console.log(
 			`Inside setLocalStateUsingChromeStorage : Setting local state to : `,
-			currentState
+			currentState,
+			`\nCalling Scenario : `,
+			callingScenario
 		);
 		localState = currentState;
 	}
@@ -210,6 +216,7 @@ function CreateProxyStore(context) {
 			isProxyStoreReady = true;
 			proxyStoreReadyStatePromiseResolver();
 		}
+		// console.log(`Running subscription listeners now...`);
 		// after background store is ready run subscribers
 		subscriptionListeners.forEach((l) => l());
 	}
