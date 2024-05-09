@@ -1,3 +1,21 @@
+@tailwind base;
+@layer base {
+	h1 {
+		@apply text-2xl;
+	}
+	h2 {
+		@apply text-xl;
+	}
+	h3 {
+		@apply text-lg;
+	}
+	a {
+		@apply text-blue-600 underline;
+	}
+}
+@tailwind components;
+@tailwind utilities;
+
 :root {
 	font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
 	line-height: 1.5;
@@ -12,6 +30,16 @@
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	-webkit-text-size-adjust: 100%;
+}
+
+.testing-btn {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 20px;
+	width: 100px;
 }
 
 a {

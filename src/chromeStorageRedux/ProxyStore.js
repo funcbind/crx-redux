@@ -51,8 +51,7 @@ function CreateProxyStore(context) {
 		}
 
 		console.log(
-			`dispatch() - Dispatching action from Proxy Store \n`,
-			action?.payload?.text
+			`\n\n####> dispatch() - Dispatching action from Proxy Store. Action Payload Text : 	${action?.payload?.text}`
 		);
 		return new Promise((resolve) => {
 			browserApi.runtime.sendMessage(
@@ -156,19 +155,26 @@ function CreateProxyStore(context) {
 		sendResponse
 	) {
 		// console.log(`backgroundStoreRuntimeMessageListener() - message`, message);
-		const { type, context = '' } = message;
+		const { type, responseData } = message;
 		switch (type) {
 			case COMMUNICATION_MESSAGE_IDS.STORE_SUBSCRIPTION_BROADCAST:
+				onSubscriptionBroadcastReceivedHandler(responseData);
 				sendResponse(`STORE BROADCAST RECEIVED AT : ${executionContext}`);
-				await onSubscriptionBroadcastReceivedHandler(context);
 				break;
 		}
 	}
 
-	async function onSubscriptionBroadcastReceivedHandler(context) {
+	async function onSubscriptionBroadcastReceivedHandler(responseData) {
+		const { action, context } = responseData;
+		const isExecutionContextDifferentFromDispatchingContext =
+			context !== executionContext;
+		let actionDescription = action?.payload?.text;
+		actionDescription = actionDescription ? actionDescription : action?.type;
+
 		console.log(
-			`onSubscriptionBroadcastReceivedHandler() - Subscription broadcast received === Execution Context :`,
-			context
+			`onSubscriptionBroadcastReceivedHandler() - Subscription broadcast received`,
+			`\nDISPATCHING CONTEXT : ${context}  |     EXECUTION/RECEIVING CONTEXT : ${executionContext}`,
+			`\nAction : ${actionDescription}`
 		);
 
 		// for dispatch({ type: ActionTypes.INIT }); case
@@ -179,7 +185,7 @@ function CreateProxyStore(context) {
 		}
 
 		// only if different context from which dispatch was called
-		if (context !== executionContext) {
+		if (isExecutionContextDifferentFromDispatchingContext) {
 			await setLocalStateUsingChromeStorage('STORE_SUBSCRIPTION_BROADCAST');
 			subscriptionListeners.forEach((l) => l());
 		}

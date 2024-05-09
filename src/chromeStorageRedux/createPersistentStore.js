@@ -349,7 +349,10 @@ export default async function createPersistentStore(
 		if (isInitializationAction) {
 			broadcastMessageToOtherParts(
 				'STORE_SUBSCRIPTION_BROADCAST',
-				executionContext,
+				{
+					context: executionContext,
+					action,
+				},
 				isInitializationAction
 			);
 		}
@@ -379,7 +382,7 @@ export default async function createPersistentStore(
 
 		return lastDeferredActionPromise
 			? lastDeferredActionPromise.resolve(action)
-			: action;
+			: Promise.resolve(action);
 	}
 
 	/**
@@ -492,13 +495,16 @@ function listenToDispatchCallsFromOtherContexts(dispatch) {
 		if (message.type === COMMUNICATION_MESSAGE_IDS.DISPATCH_TO_STORE) {
 			let { action, context } = message;
 			dispatch(action, null, context)
-				.then((response) => {
+				.then((actionObj) => {
 					console.log(
-						`dispatchCallsFromOtherPartsListener() - response`,
-						response
+						`\n ##dispatchCallsFromOtherPartsListener() - background store dispatch call successful`,
+						actionObj
 					);
-					sendResponse(response); // return response;
-					// broadcastMessageToOtherParts('STORE_SUBSCRIPTION_BROADCAST', context);
+					broadcastMessageToOtherParts('STORE_SUBSCRIPTION_BROADCAST', {
+						context,
+						action: actionObj,
+					});
+					sendResponse(actionObj); // return response;
 				})
 				.catch((e) => {
 					console.error(`dispatchCallsFromOtherPartsListener() - error`, e);
@@ -522,12 +528,13 @@ function listenToStoreExistenceCallFromOtherContexts() {
 
 async function broadcastMessageToOtherParts(
 	broadcastMessage,
-	executionContext = '',
+	responseData,
 	isInitActionDispatchBroadcast
 ) {
 	// broadcasting to all content scripts
 	const extensionId = chrome.runtime.id;
 	const broadcastMessageCode = COMMUNICATION_MESSAGE_IDS[broadcastMessage];
+	const { context } = responseData;
 
 	if (!broadcastMessageCode) {
 		throw new Error(
@@ -540,14 +547,14 @@ async function broadcastMessageToOtherParts(
 			`broadcastMessageToOtherParts() - INIT Action Dispatch Broadcast`,
 			broadcastMessage,
 			` ==== Execution Context : `,
-			executionContext
+			context
 		);
 	} else {
 		// console.log(
 		// 	`broadcastMessageToOtherParts() - Message To Broadcast`,
 		// 	broadcastMessage,
 		// 	`  === Execution Context : `,
-		// 	executionContext
+		// 	context
 		// );
 	}
 
@@ -572,7 +579,7 @@ async function broadcastMessageToOtherParts(
 					tabId,
 					{
 						type: broadcastMessageCode,
-						context: executionContext,
+						responseData,
 					},
 					(response) => {
 						// console.log(
@@ -597,7 +604,7 @@ async function broadcastMessageToOtherParts(
 	browser.runtime.sendMessage(
 		{
 			type: broadcastMessageCode,
-			context: executionContext,
+			responseData,
 		},
 		(response) => {
 			// console.log(`broadcastMessageToOtherParts() - response`, response);

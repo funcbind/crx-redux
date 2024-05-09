@@ -76,6 +76,6 @@ async function testingWithoutReact() {
 }
 
 setTimeout(() => {
-	// testingWithReact();
-	testingWithoutReact();
-}, 3000);
+	testingWithReact();
+	// testingWithoutReact();
+}, 2000);
