@@ -39,7 +39,7 @@ function CreateProxyStore(context) {
 	}
 
 	// From anypart
-	async function dispatch(action) {
+	async function asyncDispatch(action) {
 		checkStoreReadiness('dispatch');
 
 		if (!isPlainObject(action)) {
@@ -103,10 +103,10 @@ function CreateProxyStore(context) {
 
 		subscriptionListeners.push(listener);
 
-		console.log(
-			`Inside subscribe function - Added new Store Listener`,
-			subscriptionListeners
-		);
+		// console.log(
+		// 	`Inside subscribe function - Added new Store Listener`,
+		// 	subscriptionListeners
+		// );
 		return function unsubscribe() {
 			subscriptionListeners = subscriptionListeners.filter(
 				(l) => l !== listener
@@ -248,7 +248,7 @@ function CreateProxyStore(context) {
 	initialize(context);
 
 	return {
-		dispatch,
+		dispatch: asyncDispatch,
 		getState,
 		subscribe,
 		ready,

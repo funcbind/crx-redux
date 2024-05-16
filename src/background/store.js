@@ -1,11 +1,15 @@
 // import { configureStore } from '@reduxjs/toolkit';
-import { createStore, combineReducers } from 'redux';
+import { createStore, combineReducers, compose } from 'redux';
 
 import clipboardSettingsReducer from '../common/clipboardSettingsReducer';
-import copiedItemsReducer from '../common/clipboardItemsReducer';
+import copiedItemsReducer, {
+	addCopiedItem,
+} from '../common/clipboardItemsReducer';
 import createPersistentStore, {
 	clearPersistentStore,
+	applyMiddleware,
 } from '../chromeStorageRedux/createPersistentStore';
+import connectToOtherPartsEnhancer from '../chromeStorageRedux/connectToOtherPartsEnhancer';
 import testingCounterReducer from '../common/testingCounterReducer';
 
 console.log(`Inside store.js - Setting up redux store`);
@@ -38,9 +42,22 @@ const combinedReducer = combineReducers({
 	testingCounter: testingCounterReducer,
 });
 
+const loggerMiddleware = (storeAPI) => (next) => async (action) => {
+	console.log('----------------->>>> dispatching', action);
+	let result = await next(action);
+	const latestState = await storeAPI.getState();
+	console.log('----------------->>>>> next state', latestState);
+	return result;
+};
+const middlewareEnhancer = applyMiddleware(loggerMiddleware);
+
 export async function createTestStore() {
-	// clearPersistentStore();
-	const store = await createPersistentStore(combinedReducer, preloadedState);
+	clearPersistentStore();
+	const store = await createPersistentStore(
+		combinedReducer,
+		preloadedState,
+		compose(connectToOtherPartsEnhancer, middlewareEnhancer)
+	);
 	console.log(`Store created`, store);
 	return store;
 }

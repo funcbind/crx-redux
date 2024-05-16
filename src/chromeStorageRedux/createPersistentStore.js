@@ -7,6 +7,7 @@ import {
 	$$observable,
 	getBrowserAPI,
 } from './utils';
+import { compose } from 'redux';
 import { DeferredPromise } from '@open-draft/deferred-promise';
 import { LocalStorage } from '../chromeStorage/BrowserStorage';
 // import browser from 'webextension-polyfill';
@@ -346,16 +347,18 @@ export default async function createPersistentStore(
 			listener();
 		});
 
-		if (isInitializationAction) {
-			broadcastMessageToOtherParts(
-				'STORE_SUBSCRIPTION_BROADCAST',
-				{
-					context: executionContext,
-					action,
-				},
-				isInitializationAction
-			);
-		}
+		// required for late store creation - After proxyStore has been created
+		// To inform proxyStore that background store is now ready
+		// if (isInitializationAction) {
+		// 	broadcastMessageToOtherParts(
+		// 		'STORE_SUBSCRIPTION_BROADCAST',
+		// 		{
+		// 			context: executionContext,
+		// 			action,
+		// 		},
+		// 		isInitializationAction
+		// 	);
+		// }
 		// broadcastStoreSubscriptionToActiveContexts(action);
 
 		// 2. APPROACH 2 - IF LISTENERS DON'T WORK - USE PUB SUB
@@ -465,408 +468,17 @@ export default async function createPersistentStore(
 	await dispatch({ type: ActionTypes.INIT });
 
 	// connectWithOtherExtensionParts();
-	listenToStoreExistenceCallFromOtherContexts();
-	listenToDispatchCallsFromOtherContexts(dispatch);
-
-	/* 
-		precautionary step to make sure store ready message reaches to content scripts
-		in case store readiness message from port connection ( sendBackgroundStoreConnectedUpdate ())
-		fails
-		** DON'T NEED BELOW METHOD AS INIT DISPATCH ACTION TAKES CARE OF TELLING OTHER PARTS THAT THE STORE IS READY 
-	*/
-	// broadcastMessageToOtherParts(
-	// 	'BACKGROUND_STORE_READY'
-	// );
-	// lateStoreInitializationReadyUpdateBroadcast(); -- Used broadcastMessageToOtherParts instead of it
+	// listenToStoreExistenceCallFromOtherContexts();
+	// listenToDispatchCallsFromOtherContexts(dispatch);
 
 	const store = {
 		dispatch: dispatch,
 		subscribe,
-		getState,
+		getState: getState,
 		replaceReducer,
 		[$$observable]: observable,
 	};
 	return store;
-}
-
-function listenToDispatchCallsFromOtherContexts(dispatch) {
-	const browser = getBrowserAPI();
-	browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-		if (message.type === COMMUNICATION_MESSAGE_IDS.DISPATCH_TO_STORE) {
-			let { action, context } = message;
-			dispatch(action, null, context)
-				.then((actionObj) => {
-					console.log(
-						`\n ##dispatchCallsFromOtherPartsListener() - background store dispatch call successful`,
-						actionObj
-					);
-					broadcastMessageToOtherParts('STORE_SUBSCRIPTION_BROADCAST', {
-						context,
-						action: actionObj,
-					});
-					sendResponse(actionObj); // return response;
-				})
-				.catch((e) => {
-					console.error(`dispatchCallsFromOtherPartsListener() - error`, e);
-					sendResponse({
-						error: `${e}`,
-					});
-				});
-			return true;
-		}
-	});
-}
-
-function listenToStoreExistenceCallFromOtherContexts() {
-	const browser = getBrowserAPI();
-	browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-		if (message.type === COMMUNICATION_MESSAGE_IDS.CHECK_STORE_EXISTENCE) {
-			sendResponse(COMMUNICATION_MESSAGE_IDS.BACKGROUND_STORE_AVAILABLE);
-		}
-	});
-}
-
-async function broadcastMessageToOtherParts(
-	broadcastMessage,
-	responseData,
-	isInitActionDispatchBroadcast
-) {
-	// broadcasting to all content scripts
-	const extensionId = chrome.runtime.id;
-	const broadcastMessageCode = COMMUNICATION_MESSAGE_IDS[broadcastMessage];
-	const { context } = responseData;
-
-	if (!broadcastMessageCode) {
-		throw new Error(
-			`broadcastMessageToOtherParts() - Broadcast Message Code Not found : ${broadcastMessage}`
-		);
-	}
-
-	if (isInitActionDispatchBroadcast) {
-		console.log(
-			`broadcastMessageToOtherParts() - INIT Action Dispatch Broadcast`,
-			broadcastMessage,
-			` ==== Execution Context : `,
-			context
-		);
-	} else {
-		// console.log(
-		// 	`broadcastMessageToOtherParts() - Message To Broadcast`,
-		// 	broadcastMessage,
-		// 	`  === Execution Context : `,
-		// 	context
-		// );
-	}
-
-	const browser = getBrowserAPI();
-
-	browser.tabs.query({}, (tabs = []) => {
-		for (const tab of tabs) {
-			const { id: tabId, url: tabUrl } = tab;
-
-			if (typeof tabUrl !== 'string') {
-				throw new Error(
-					`Tabs permission missing in Manifest`,
-					`\n Add tabs permission in manifest as follows: `,
-					`\n "permissions": ["storage", "unlimitedStorage", "tabs"]`
-				);
-			}
-
-			if (!tabUrl.includes(extensionId)) {
-				// console.log(`Tab Details : Id : ${tabId}         url : ${tabUrl}`);
-
-				browser.tabs.sendMessage(
-					tabId,
-					{
-						type: broadcastMessageCode,
-						responseData,
-					},
-					(response) => {
-						// console.log(
-						// 	`Response from tabs for broadcast Message : ${messageToBroadcast} : `,
-						// 	response
-						// );
-						const lastError = browser.runtime.lastError;
-						if (lastError) {
-							// console.warn(
-							// 	`Some error occured in broadcasting store subscription to `,
-							// 	`content script with tab Id : ${tabId} & tab url : ${tabUrl}`,
-							// 	lastError
-							// );
-						}
-					}
-				);
-			}
-		}
-	});
-
-	// broadcast to all other parts
-	browser.runtime.sendMessage(
-		{
-			type: broadcastMessageCode,
-			responseData,
-		},
-		(response) => {
-			// console.log(`broadcastMessageToOtherParts() - response`, response);
-			const lastError = browser.runtime.lastError;
-
-			if (lastError) {
-				// console.warn(
-				// 	`Some error occured in broadcasting store subscription to popup, option, devtools etc`,
-				// 	lastError
-				// );
-			}
-		}
-	);
-}
-
-// Listening to dispatch calls from other parts of chrome extensions
-// Private method - don't expose it
-
-function connectWithOtherExtensionParts() {
-	browser.runtime.onConnect.addListener(async (port) => {
-		const portName = port.name;
-		if (
-			portName.includes(
-				CHROME_REDUX_CONSTANTS.BACKGROUND_STORE_CONNECTION_PORT_NAME
-			)
-		) {
-			const [, connectedExtensionContext] = portName.split(`-`);
-			console.log(
-				`${connectedExtensionContext} connected successfully with background store`
-			);
-			// const { sender } = port;
-
-			// Strategy 2.0 2nd Implementation for getState (Updating State) & subscription broadcasting
-			await sendLatestStateUpdates(port, getState, subscribe); // For strategy 2.0
-			sendStoreReadyUpdateToConnectedContext(port, connectedExtensionContext);
-
-			// addRemoveActiveContextFromStorage(connectedExtensionContext, sender);
-			// port.onDisconnect.addListener(() => {
-			// 	addRemoveActiveContextFromStorage(sender, true);
-			// });
-			// port.onMessage.addListener(function (message) {
-			// 	console.log(arguments);
-			// 	postOnMessageHandler(message, dispatch);
-			// });
-		}
-	});
-}
-// function postOnMessageHandler(message, dispatch) {
-// 	console.log(`postOnMessageHandler() - Message Received`, message);
-// 	const { type, action } = message;
-
-// 	// if (type === COMMUNICATION_MESSAGE_IDS.DISPATCH_TO_STORE) {
-// 	// 	dispatch(action);
-// 	// }
-// }
-
-function sendStoreReadyUpdateToConnectedContext(
-	port,
-	connectedExtensionContext
-) {
-	console.log(
-		`sendBackgroundStoreReadyUpdate() - sending background store ready update to : ${connectedExtensionContext}`
-	);
-	port.postMessage({
-		type: COMMUNICATION_MESSAGE_IDS.BACKGROUND_STORE_READY,
-	});
-}
-
-async function addRemoveActiveContextFromStorage(
-	connectedExtensionContext,
-	sender,
-	removeDisconnectedContext = false
-) {
-	const senderTabId = sender?.tab?.id;
-	const currentActiveContext =
-		connectedExtensionContext === EXTENSIONS_CONTEXTS.CONTENT_SCRIPT
-			? `${EXTENSIONS_CONTEXTS.CONTENT_SCRIPT}@${senderTabId}`
-			: connectedExtensionContext;
-
-	console.log(
-		`addRemoveActiveContextFromStorage() - Saving or Removing Opened/Closed Active Context\n`,
-		`Current Active Context is : `,
-		currentActiveContext,
-		`Sender Tab Id is : `,
-		senderTabId,
-		`Active context to add/remove :`,
-		removeDisconnectedContext
-	);
-
-	try {
-		let savedActiveContexts = await LocalStorage.get(
-			CHROME_STORAGE_KEY_FOR.ACTIVE_EXTENSION_CONTEXTS
-		);
-
-		console.log(
-			`addRemoveActiveContextFromStorage() - Already saved active contexts : `,
-			savedActiveContexts
-		);
-		savedActiveContexts = savedActiveContexts ?? [];
-
-		if (!Array.isArray(savedActiveContexts))
-			throw new Error(`Saved Active Contexts should be an Array`);
-
-		if (!removeDisconnectedContext) {
-			if (!savedActiveContexts.includes(currentActiveContext)) {
-				savedActiveContexts.push(currentActiveContext);
-			}
-		} else {
-			savedActiveContexts = savedActiveContexts.filter(
-				(aC) => aC !== currentActiveContext
-			);
-			console.log(`Removing active context - `, currentActiveContext);
-		}
-		await LocalStorage.save({
-			[CHROME_STORAGE_KEY_FOR.ACTIVE_EXTENSION_CONTEXTS]: savedActiveContexts,
-		});
-	} catch (error) {
-		console.error(
-			`Some error occurred whie saving or removing active context from chrome storage`,
-			error
-		);
-	}
-}
-/**
- * Deprecated
- * Reason : Active Context too diffult to maintain instead broadcast everywhere
- * */
-async function broadcastStoreSubscriptionToActiveContexts() {
-	let savedActiveContexts = await LocalStorage.get(
-		CHROME_STORAGE_KEY_FOR.ACTIVE_EXTENSION_CONTEXTS
-	);
-
-	// console.log(
-	// 	`broadcastStoreSubscription() - Broadcasting store subscription to other contexts\n`,
-	// 	`For Action :  ${action.type}        ${action?.payload?.text} \n`,
-	// 	`Saved Active contexts :`,
-	// 	savedActiveContexts
-	// );
-
-	savedActiveContexts = savedActiveContexts ?? [];
-
-	if (savedActiveContexts.length) {
-		const contentScriptSavedContexts = savedActiveContexts.filter(
-			(savedContexts) => {
-				// console.log(
-				// 	`broadcastStoreSubscription() - Saved contexts for content scripts checking : `,
-				// 	savedContexts
-				// );
-				return savedContexts.includes(EXTENSIONS_CONTEXTS.CONTENT_SCRIPT);
-			}
-		);
-		const nonContentScriptSavedContexts = savedActiveContexts.filter(
-			(savedContexts) => {
-				// console.log(
-				// 	`broadcastStoreSubscription() - Saved contexts for other contexts checking : `,
-				// 	savedContexts
-				// );
-				return !savedContexts.includes(EXTENSIONS_CONTEXTS.CONTENT_SCRIPT);
-			}
-		);
-
-		// have to send message to all content scripts individually using tab id
-		contentScriptSavedContexts.forEach((activeContext) => {
-			// context is content script
-			if (activeContext.includes(EXTENSIONS_CONTEXTS.CONTENT_SCRIPT)) {
-				const [, tabId] = activeContext.split('@');
-				// console.log(
-				// 	`broadcastStoreSubscription() - Broadcasting store subscription to CONTENT SCRIPT active contexts\n`,
-				// 	`Content Script Tab Id : `,
-				// 	tabId
-				// );
-
-				if (typeof tabId === 'string') {
-					browser.tabs.sendMessage(
-						tabId,
-						{
-							type: COMMUNICATION_MESSAGE_IDS.STORE_SUBSCRIPTION_BROADCAST,
-						},
-						() => {
-							if (chrome.runtime.lastError) {
-								// do nothing - errors can be present
-								// if no content script exists on reciever
-							}
-						}
-					);
-				}
-			}
-		});
-
-		// FOR POPUP, DEVTOOLS & OPTIONS - Just need to send one message & all of them will receive it
-		if (nonContentScriptSavedContexts.length) {
-			// console.log(
-			// 	`broadcastStoreSubscription() - Broadcasting store subscription to POPUP, OPTIONS OR DEVTOOLS active contexts\n`
-			// );
-			browser.runtime.sendMessage({
-				type: COMMUNICATION_MESSAGE_IDS.STORE_SUBSCRIPTION_BROADCAST,
-			});
-		}
-	}
-}
-
-async function removeAllSavedActiveContexts() {
-	console.log(`Removing all saved active contexts from chrome storage`);
-	await LocalStorage.save({
-		[CHROME_STORAGE_KEY_FOR.ACTIVE_EXTENSION_CONTEXTS]: [],
-	});
-}
-
-// Strategy 2.0 - for getState (Updating State) & subscription broadcasting
-async function sendLatestStateUpdates(port, getState, subscribe) {
-	let prevState = await getState();
-
-	console.log(
-		`sendLatestStateUpdates() - STRATEGY 2.0 - sending latest state updates update post
-		 successful port connection with background store and also on every store subscription`,
-		`prevState : `,
-		prevState
-	);
-
-	const patchState = () => {
-		const state = getState();
-		const diff = defaultOpts.diffStrategy(prevState, state);
-
-		if (diff.length) {
-			prevState = state;
-
-			port.postMessage({
-				type: COMMUNICATION_MESSAGE_IDS.PATCH_STATE_TYPE,
-				payload: diff,
-			});
-		}
-	};
-
-	const unsubscribe = subscribe(patchState);
-	// when the port disconnects, unsubscribe the sendState listener
-	port.onDisconnect.addListener(unsubscribe);
-
-	// Send store's initial state through port
-	port.postMessage({
-		type: COMMUNICATION_MESSAGE_IDS.STATE_TYPE,
-		payload: prevState,
-	});
-}
-
-/**   STRATEGY IMPEMENTATION ENDING   ***/
-
-/**
- * precautionary step
- * Safety message to tabs for content scripts
- * For store readiness message
- */
-async function lateStoreInitializationReadyUpdateBroadcast() {
-	const tabs = await browser.tabs.query({});
-
-	if (tabs.length) {
-		for (const tab of tabs) {
-			browser.tabs.sendMessage(tab.id, {
-				type: COMMUNICATION_MESSAGE_IDS.BACKGROUND_STORE_READY,
-				portName: CHROME_REDUX_CONSTANTS.BACKGROUND_STORE_CONNECTION_PORT_NAME,
-			});
-		}
-	}
 }
 
 // For testing purposes only
@@ -878,4 +490,43 @@ export async function clearPersistentStore() {
 		CHROME_STORAGE_KEY_FOR.IS_REDUX_STORE_INITIALIZED,
 		CHROME_STORAGE_KEY_FOR.ACTIVE_EXTENSION_CONTEXTS,
 	]);
+}
+
+/**
+ * Modified applyMiddleware enhancer
+ * instead of create store we are using await create store
+ * Rest all is same
+ *
+ * @param  {...any} middlewares Middleware Arguments
+ * @returns
+ */
+export function applyMiddleware(...middlewares) {
+	return (createStore) => async (reducer, preloadedState) => {
+		const store = await createStore(reducer, preloadedState);
+		let dispatch = () => {
+			throw new Error(
+				process.env.NODE_ENV === 'production'
+					? _formatProdErrorMessage(15)
+					: 'Dispatching while constructing your middleware is not allowed. ' +
+					  'Other middleware would not be applied to this dispatch.'
+			);
+		};
+		const middlewareAPI = {
+			getState: store.getState,
+			dispatch: (action, ...args) => dispatch(action, ...args),
+		};
+		const chain = middlewares.map((middleware) => middleware(middlewareAPI));
+		dispatch = compose(...chain)(store.dispatch);
+		return {
+			...store,
+			dispatch,
+		};
+	};
+}
+
+export function formatProdErrorMessage(code) {
+	return (
+		`Minified Redux error #${code}; visit https://redux.js.org/Errors?code=${code} for the full message or ` +
+		'use the non-minified dev environment for full errors. '
+	);
 }

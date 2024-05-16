@@ -9,6 +9,13 @@ console.log(`Inside reduxStoreTesting.js - Testing persistent store`);
 setTimeout(async () => {
 	// clearing local storage before testing
 	const store = await createTestStore();
+	console.log(`Test Store : `, store);
+	setTimeout(async () => {
+		await store.dispatch(addCopiedItem('Testing Middleware Integration'));
+		const latestState = await store.getState();
+		console.log(`Latest state : `, latestState);
+	}, 10000);
+
 	unsubscribe = store.subscribe(async () => {
 		const latestState = await store.getState();
 		const { clipboardItems } = latestState;
@@ -24,15 +31,7 @@ setTimeout(async () => {
 	// 	console.log(`reduxStoreTesting.js : Error while dispatching`, error);
 	// }
 	// store.dispatch(addCopiedItem('111 Second dispatch Testing'));
-	// store.dispatch(addCopiedItem('Third dispatch Testing'));
-	// store.dispatch(addCopiedItem('Fourth dispatch Testing'));
 	// store.dispatch(addCopiedItem('Fifth dispatch Testing'));
 	// const latestState = await store.getState();
 	// console.log(`Latest state after four dispatches`, latestState);
-	// store.dispatch(addCopiedItem('This is some copied text'));
 }, 3000);
-
-// console.log(`Unsubscribe : `, unsubscribe);
-// setTimeout(() => {
-// 	unsubscribe();
-// }, 15000);
