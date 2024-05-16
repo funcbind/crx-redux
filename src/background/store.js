@@ -11,8 +11,13 @@ import createPersistentStore, {
 } from '../chromeStorageRedux/createPersistentStore';
 import connectToOtherPartsEnhancer from '../chromeStorageRedux/connectToOtherPartsEnhancer';
 import testingCounterReducer from '../common/testingCounterReducer';
+import { createLogger } from 'redux-logger';
 
 console.log(`Inside store.js - Setting up redux store`);
+
+const logger = createLogger({
+	// ...options
+});
 
 const preloadedState = {
 	clipboardSettings: {
@@ -43,13 +48,18 @@ const combinedReducer = combineReducers({
 });
 
 const loggerMiddleware = (storeAPI) => (next) => async (action) => {
-	console.log('----------------->>>> dispatching', action);
+	console.log(
+		'         ---->>>>    dispatching | Action Type',
+		action?.type,
+		` |  Action Payload Text : `,
+		action?.payload?.text
+	);
 	let result = await next(action);
 	const latestState = await storeAPI.getState();
-	console.log('----------------->>>>> next state', latestState);
+	console.log('         ---->>>>>   next state', latestState);
 	return result;
 };
-const middlewareEnhancer = applyMiddleware(loggerMiddleware);
+const middlewareEnhancer = applyMiddleware(loggerMiddleware, logger);
 
 export async function createTestStore() {
 	clearPersistentStore();
@@ -57,6 +67,7 @@ export async function createTestStore() {
 		combinedReducer,
 		preloadedState,
 		compose(connectToOtherPartsEnhancer, middlewareEnhancer)
+		// connectToOtherPartsEnhancer
 	);
 	console.log(`Store created`, store);
 	return store;

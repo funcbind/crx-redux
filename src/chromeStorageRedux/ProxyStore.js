@@ -39,7 +39,7 @@ function CreateProxyStore(context) {
 	}
 
 	// From anypart
-	async function asyncDispatch(action) {
+	async function dispatch(action) {
 		checkStoreReadiness('dispatch');
 
 		if (!isPlainObject(action)) {
@@ -66,9 +66,10 @@ function CreateProxyStore(context) {
 					const responseError = response.error;
 
 					if (!lastError && !responseError) {
+						let actionObj = response;
 						await setLocalStateUsingChromeStorage('DISPATCH_SUCCESSFUL');
-						resolve(response);
-						subscriptionListeners.forEach((l) => l());
+						resolve(actionObj);
+						subscriptionListeners.forEach((l) => l(actionObj));
 					} else {
 						throw new Error(responseError ? responseError : lastError);
 					}
@@ -171,12 +172,6 @@ function CreateProxyStore(context) {
 		let actionDescription = action?.payload?.text;
 		actionDescription = actionDescription ? actionDescription : action?.type;
 
-		console.log(
-			`onSubscriptionBroadcastReceivedHandler() - Subscription broadcast received`,
-			`\nDISPATCHING CONTEXT : ${context}  |     EXECUTION/RECEIVING CONTEXT : ${executionContext}`,
-			`\nAction : ${actionDescription}`
-		);
-
 		// for dispatch({ type: ActionTypes.INIT }); case
 		// background store late initialization
 		if (!isProxyStoreReady) {
@@ -186,9 +181,25 @@ function CreateProxyStore(context) {
 
 		// only if different context from which dispatch was called
 		if (isExecutionContextDifferentFromDispatchingContext) {
+			console.log(
+				`onSubscriptionBroadcastReceivedHandler() - Subscription broadcast received`,
+				`\nDISPATCHING CONTEXT : ${context}  |  EXECUTION/RECEIVING CONTEXT : ${executionContext}  |  Action : ${actionDescription} `
+			);
 			await setLocalStateUsingChromeStorage('STORE_SUBSCRIPTION_BROADCAST');
 			subscriptionListeners.forEach((l) => l());
 		}
+	}
+
+	async function setLocalStateUsingChromeStorage(callingScenario) {
+		const currentState = await getStateDirectlyFromChromeStorage();
+		// console.log(
+		// 	`Inside setLocalStateUsingChromeStorage : Setting local state to : `,
+		// 	currentState,
+		// 	`\nCalling Scenario : `,
+		// 	callingScenario
+		// );
+		localState = currentState;
+		return currentState;
 	}
 
 	async function getStateDirectlyFromChromeStorage() {
@@ -201,17 +212,6 @@ function CreateProxyStore(context) {
 		}
 
 		return currentState;
-	}
-
-	async function setLocalStateUsingChromeStorage(callingScenario) {
-		const currentState = await getStateDirectlyFromChromeStorage();
-		console.log(
-			`Inside setLocalStateUsingChromeStorage : Setting local state to : `,
-			currentState,
-			`\nCalling Scenario : `,
-			callingScenario
-		);
-		localState = currentState;
 	}
 
 	function onBackgroundStoreReadyHandler() {
@@ -248,7 +248,7 @@ function CreateProxyStore(context) {
 	initialize(context);
 
 	return {
-		dispatch: asyncDispatch,
+		dispatch: dispatch,
 		getState,
 		subscribe,
 		ready,

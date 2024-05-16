@@ -28,10 +28,10 @@ function listenToDispatchCallsFromOtherContexts(dispatch) {
 			let { action, context } = message;
 			dispatch(action, null, context)
 				.then((actionObj) => {
-					console.log(
-						`\n ##dispatchCallsFromOtherPartsListener() - background store dispatch call successful`,
-						actionObj
-					);
+					// console.log(
+					// 	`\n ##dispatchCallsFromOtherPartsListener() - background store dispatch call successful`,
+					// 	actionObj
+					// );
 					broadcastMessageToOtherParts('STORE_SUBSCRIPTION_BROADCAST', {
 						context,
 						action: actionObj,

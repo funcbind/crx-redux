@@ -10,12 +10,6 @@ setTimeout(async () => {
 	// clearing local storage before testing
 	const store = await createTestStore();
 	console.log(`Test Store : `, store);
-	setTimeout(async () => {
-		await store.dispatch(addCopiedItem('Testing Middleware Integration'));
-		const latestState = await store.getState();
-		console.log(`Latest state : `, latestState);
-	}, 10000);
-
 	unsubscribe = store.subscribe(async () => {
 		const latestState = await store.getState();
 		const { clipboardItems } = latestState;
@@ -25,13 +19,28 @@ setTimeout(async () => {
 			clipboardItems
 		);
 	});
-	// try {
-	// 	await store.dispatch(addCopiedItem('First dispatch testing'));
-	// } catch (error) {
-	// 	console.log(`reduxStoreTesting.js : Error while dispatching`, error);
-	// }
-	// store.dispatch(addCopiedItem('111 Second dispatch Testing'));
-	// store.dispatch(addCopiedItem('Fifth dispatch Testing'));
+
+	// const firstState = await store.getState();
+	// console.log(`First state before anything : `, firstState);
+
+	await store.dispatch(addCopiedItem('Middleware Testing Dispatch 1'));
+	// await store.dispatch(addCopiedItem('Middleware Testing Dispatch 2'));
+	// store.dispatch(addCopiedItem('Middleware Testing Dispatch 3'));
+	const latestState1 = await store.getState();
+	console.log(`Latest state `, latestState1);
+
+	// store.dispatch(addCopiedItem('Middleware Testing Dispatch 4'));
+	// await store.dispatch(addCopiedItem('Middleware Testing Dispatch 5'));
+	// const latestState2 = await store.getState();
+	// console.log(`Latest state `, latestState2);
+
+	// store.dispatch(addCopiedItem('Middleware Testing Dispatch 6'));
 	// const latestState = await store.getState();
-	// console.log(`Latest state after four dispatches`, latestState);
-}, 3000);
+	// console.log(`Latest state `, latestState);
+
+	// setTimeout(async () => {
+	// 	await store.dispatch(addCopiedItem('Testing Middleware Integration'));
+	// 	const latestState = await store.getState();
+	// 	console.log(`Latest state : `, latestState);
+	// }, 5000);
+}, 0);

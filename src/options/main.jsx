@@ -10,24 +10,35 @@ console.log(`This is the Options file!!!`);
 
 const proxyStore = getProxyStore();
 setTimeout(() => {
-	// testingWithReact();
-	testingWithoutReact();
+	testingWithReact();
+	// testingWithoutReact();
 }, 3000);
 
-proxyStore.subscribe(() => {
+proxyStore.subscribe((action) => {
 	const latestState = proxyStore.getState();
 	console.log(
-		`Inside First ProxyStore.subscribe() - Latest state : `,
-		latestState
+		`Subscription 1 - Latest state : `,
+		latestState,
+		`  |  Action Type : `,
+		action?.type,
+		`  |  Action Payload Text : `,
+		action?.payload?.text
 	);
+
+	// console.log(`Subscription 1 run for action : `,action?.payload?.text );
 });
 
-proxyStore.subscribe(() => {
+proxyStore.subscribe((action) => {
 	const latestState = proxyStore.getState();
 	console.log(
-		`Inside Second ProxyStore.subscribe() - Latest state : `,
-		latestState
+		`Subscription 2 - Latest state : `,
+		latestState,
+		`  |  Action Type : `,
+		action?.type,
+		`  |  Action Payload Text : `,
+		action?.payload?.text
 	);
+	// console.log(`Subscription 2 run for action : `, action?.payload?.text);
 });
 
 // await proxyStore.dispatch(addCopiedItem('Outside ready dispatch testing'));
@@ -48,8 +59,8 @@ async function testingWithoutReact() {
 			`testingWithoutReact() - Options Context : Proxy Store is now ready`
 		);
 		// await proxyStore.dispatch(clearClipboard());
-		const latestState = proxyStore.getState();
-		console.log(`Latest state 1 : `, latestState);
+		const firstState = proxyStore.getState();
+		console.log(`First state : `, firstState);
 
 		// await proxyStore.dispatch(addCopiedItem('Copied Text 1'));
 		// const latestState1 = proxyStore.getState();
@@ -73,24 +84,30 @@ async function testingWithoutReact() {
 		// proxyStore.dispatch(addCopiedItem('Copied Text 7'));
 		// proxyStore.dispatch(addCopiedItem('Copied Text 8'));
 
+		// const statePostContinuousDispatches = proxyStore.getState();
+		// console.log(
+		// 	`testingWithoutReact() - Latest State Post continuous dispatches : `,
+		// 	statePostContinuousDispatches
+		// );
+
 		await proxyStore.dispatch(addCopiedItem('Copied Text 1'));
-		// await proxyStore.dispatch(addCopiedItem('Copied Text 2'));
-		// await proxyStore.dispatch(addCopiedItem('Copied Text 3'));
+		proxyStore.dispatch(addCopiedItem('Copied Text 2'));
+		proxyStore.dispatch(addCopiedItem('Copied Text 3'));
 		const latestState1 = proxyStore.getState();
 		console.log(
 			`====> testingWithoutReact() - Latest State 1 : `,
 			latestState1
 		);
 
-		// await proxyStore.dispatch(addCopiedItem('Copied Text 4'));
-		// proxyStore.dispatch(addCopiedItem('Copied Text 5'));
-		// proxyStore.dispatch(addCopiedItem('Copied Text 6'));
-		// proxyStore.dispatch(addCopiedItem('Copied Text 7'));
-		// const latestState2 = proxyStore.getState();
-		// console.log(
-		// 	`====> testingWithoutReact() - Latest State 2 : `,
-		// 	latestState2
-		// );
+		await proxyStore.dispatch(addCopiedItem('Copied Text 4'));
+		proxyStore.dispatch(addCopiedItem('Copied Text 5'));
+		proxyStore.dispatch(addCopiedItem('Copied Text 6'));
+		proxyStore.dispatch(addCopiedItem('Copied Text 7'));
+		const latestState2 = proxyStore.getState();
+		console.log(
+			`====> testingWithoutReact() - Latest State 2 : `,
+			latestState2
+		);
 
 		// await proxyStore.dispatch(addCopiedItem('Copied Text 8'));
 		// proxyStore.dispatch(addCopiedItem('Copied Text 9'));
@@ -110,8 +127,10 @@ async function testingWithoutReact() {
 		// 	latestState4
 		// );
 
-		const finalState = proxyStore.getState();
-		console.log(`====> testingWithoutReact() - Final State : `, finalState);
+		setTimeout(() => {
+			const finalState = proxyStore.getState();
+			console.log(`====> testingWithoutReact() - Final State : `, finalState);
+		}, 1000);
 	});
 }
 
