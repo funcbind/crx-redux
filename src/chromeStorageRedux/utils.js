@@ -2,6 +2,8 @@
 import { CHROME_REDUX_CONSTANTS, EXTENSIONS_CONTEXTS } from './constants';
 // import browser from 'webextension-polyfill';
 
+console.log(` ==============>>>>> am inside utils file`);
+
 const randomString = () =>
 	Math.random().toString(36).substring(7).split('').join('.');
 

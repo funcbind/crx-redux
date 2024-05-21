@@ -12,6 +12,7 @@ import createPersistentStore, {
 import connectToOtherPartsEnhancer from '../chromeStorageRedux/connectToOtherPartsEnhancer';
 import testingCounterReducer from '../common/testingCounterReducer';
 import { createLogger } from 'redux-logger';
+import { loglevel } from '../common/appLogger';
 
 console.log(`Inside store.js - Setting up redux store`);
 
@@ -48,15 +49,23 @@ const combinedReducer = combineReducers({
 });
 
 const loggerMiddleware = (storeAPI) => (next) => async (action) => {
-	console.log(
+	// console.log(
+	// 	'         ---->>>>    dispatching | Action Type',
+	// 	action?.type,
+	// 	` |  Action Payload Text : `,
+	// 	action?.payload?.text
+	// );
+	loglevel.info(
 		'         ---->>>>    dispatching | Action Type',
 		action?.type,
 		` |  Action Payload Text : `,
-		action?.payload?.text
+		action?.payload?.text,
+		action
 	);
 	let result = await next(action);
 	const latestState = await storeAPI.getState();
-	console.log('         ---->>>>>   next state', latestState);
+	loglevel.info('         ---->>>>>   next state', latestState);
+	// console.log('         ---->>>>>   next state', latestState);
 	return result;
 };
 const middlewareEnhancer = applyMiddleware(loggerMiddleware, logger);

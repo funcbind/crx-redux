@@ -1,3 +1,5 @@
+import '../common/rollbarConfig.js';
+import '../common/rollbar.min.js';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
@@ -30,6 +32,7 @@ proxyStore.subscribe(() => {
 });
 
 function testingWithReact() {
+	// throw new Error(`testingWithReact() - Now it won't go....let see`);
 	console.log(
 		`testingWithoutReact() - Testing Redux Chrome Storage "WITH" React`
 	);

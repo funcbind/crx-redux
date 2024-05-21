@@ -26,6 +26,8 @@ function Popup() {
 	copiedItems = copiedItems || [];
 
 	function handleAddNewCopiedItem() {
+		throw new Error(`Testing rollbar error tracking script!!!`);
+
 		console.log(`Inside handle Add New Copied Item`);
 		let tempNewCopiedItemText = newCopiedItemText;
 		if (newCopiedItemText === ``) {
