@@ -100,24 +100,6 @@ export function kindOf(val) {
 export const $$observable = /* #__PURE__ */ (() =>
 	(typeof Symbol === 'function' && Symbol.observable) || '@@observable')();
 
-export function getBrowserAPI() {
-	let api;
-
-	try {
-		// eslint-disable-next-line no-undef
-		api = self.chrome || self.browser || browser;
-	} catch (error) {
-		// eslint-disable-next-line no-undef
-		api = browser;
-	}
-
-	if (!api) {
-		throw new Error('Browser API is not present');
-	}
-
-	return api;
-}
-
 export function shallowDiff(oldObj, newObj) {
 	const difference = [];
 
@@ -141,6 +123,24 @@ export function shallowDiff(oldObj, newObj) {
 	});
 
 	return difference;
+}
+
+export function getBrowserAPI() {
+	let api;
+
+	try {
+		// eslint-disable-next-line no-undef
+		api = self.chrome || self.browser || browser;
+	} catch (error) {
+		// eslint-disable-next-line no-undef
+		api = browser;
+	}
+
+	if (!api) {
+		throw new Error('Browser API is not present');
+	}
+
+	return api;
 }
 
 export function getContextType() {

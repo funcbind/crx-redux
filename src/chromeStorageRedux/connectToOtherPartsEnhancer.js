@@ -15,8 +15,19 @@ export default function connectToOtherPartsEnhancer(createStore) {
 		listenToStoreExistenceCallFromOtherContexts();
 		listenToDispatchCallsFromOtherContexts(store.dispatch);
 
+		async function dispatchWithBroadcast(...args) {
+			const res = await store.dispatch(...args);
+			const [action, context] = args;
+			broadcastMessageToOtherParts('STORE_SUBSCRIPTION_BROADCAST', {
+				context,
+				action,
+			});
+			return res;
+		}
+
 		return {
 			...store,
+			dispatch: dispatchWithBroadcast,
 		};
 	};
 }

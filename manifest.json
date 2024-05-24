@@ -1,6 +1,6 @@
 {
 	"manifest_version": 3,
-	"name": "Chrome Extension Starter",
+	"name": "Redux Chrome storage",
 	"version": "1.0.0",
 	"host_permissions": ["https://api.rollbar.com/"],
 	"action": { "default_popup": "src/popup/index.html" },
