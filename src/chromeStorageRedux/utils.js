@@ -224,3 +224,70 @@ export function getContextType() {
 
 	return contextType;
 }
+
+export function sendMessageToTabs(tabId, broadcastMesage) {
+	const browser = getBrowserAPI();
+
+	new Promise((resolve, reject) => {
+		browser.tabs.sendMessage(tabId, broadcastMesage, (response) => {
+			// console.log(`sendMessageToTabs() - response`, response);
+			const lastError = browser.runtime.lastError;
+			if (lastError) {
+				console.error(
+					`Some error occured in broadcasting store subscription to content script with tabId : ${tabId}`,
+					lastError
+				);
+				reject(lastError);
+			} else {
+				resolve(response);
+			}
+		});
+	});
+}
+
+export function sendMessageToOtherContexts(broadcastMessge) {
+	const browser = getBrowserAPI();
+
+	new Promise((resolve, reject) => {
+		browser.runtime.sendMessage(broadcastMessge, (response) => {
+			// console.log(`sendMessageToOtherContexts() - response`, response);
+			const lastError = browser.runtime.lastError;
+			if (lastError) {
+				console.error(
+					`Some error occured in broadcasting Message to other contexts`,
+					lastError
+				);
+				reject(lastError);
+			} else {
+				resolve(response);
+			}
+		});
+	});
+}
+
+export function iterateOverContentScript(fn) {
+	const browser = getBrowserAPI();
+	// broadcasting to all content scripts
+	const extensionId = browser.runtime.id;
+	browser.tabs.query({}, (tabs = []) => {
+		for (const tab of tabs) {
+			const { id: tabId, url: tabUrl } = tab;
+
+			if (typeof tabUrl !== 'string') {
+				throw new Error(
+					`Tabs permission missing in Manifest`,
+					`\n Add tabs permission in manifest as follows: `,
+					`\n "permissions": ["storage", "unlimitedStorage", "tabs"]`
+				);
+			}
+
+			if (!tabUrl.includes(extensionId)) {
+				fn(tabId);
+			}
+		}
+	});
+}
+
+export function isUndefinedOrNull(variable) {
+	return typeof variable === `undefined` || variable === null;
+}

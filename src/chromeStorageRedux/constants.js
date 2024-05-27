@@ -23,22 +23,15 @@ const COMMUNICATION_MESSAGE_IDS = {
 	STATE_TYPE: 'crx.state',
 	BACKGROUND_STORE_READY: 'crx.background_store_ready',
 	STORE_SUBSCRIPTION_BROADCAST: 'crx.background_subscription_broadcast',
-};
-
-const CHROME_REDUX_CONSTANTS = {
-	BACKGROUND_STORE_CONNECTION_PORT_NAME: 'back_store_connection_port',
-	DIFF_STATUS_UPDATED: 'updated',
-	DIFF_STATUS_REMOVED: 'removed',
+	STORE_UPDATE_BROADCAST: 'crx.store_update_broadcast',
 };
 
 Object.freeze(CHROME_STORAGE_KEY_FOR);
 Object.freeze(EXTENSIONS_CONTEXTS);
 Object.freeze(COMMUNICATION_MESSAGE_IDS);
-Object.freeze(CHROME_REDUX_CONSTANTS);
 
 export {
 	CHROME_STORAGE_KEY_FOR,
 	EXTENSIONS_CONTEXTS,
 	COMMUNICATION_MESSAGE_IDS,
-	CHROME_REDUX_CONSTANTS,
 };
