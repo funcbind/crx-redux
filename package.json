@@ -12,6 +12,7 @@
 	"dependencies": {
 		"@open-draft/deferred-promise": "^2.2.0",
 		"@reduxjs/toolkit": "^1.9.7",
+		"browser-extension-url-match": "^1.2.0",
 		"deep-eql": "^5.0.1",
 		"jquery": "^3.7.1",
 		"lodash-es": "^4.17.21",

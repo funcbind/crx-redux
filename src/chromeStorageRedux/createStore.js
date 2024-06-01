@@ -5,8 +5,6 @@ import {
 	$$observable,
 	getBrowserAPI,
 } from './utils';
-import { compose } from 'redux';
-import { LocalStorage } from '../chromeStorage/BrowserStorage';
 
 export function createPersistentStoreType2(reducer, preloadedState, enhancer) {
 	if (typeof reducer !== 'function') {
@@ -176,12 +174,6 @@ export function createPersistentStoreType2(reducer, preloadedState, enhancer) {
 		dispatch({ type: ActionTypes.REPLACE });
 	}
 
-	/**
-	 * Interoperability point for observable/reactive libraries.
-	 * @returns A minimal observable of state changes.
-	 * For more information, see the observable proposal:
-	 * https://github.com/tc39/proposal-observable
-	 */
 	function observable() {
 		const outerSubscribe = subscribe;
 		return {

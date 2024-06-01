@@ -10,72 +10,55 @@ import {
 	addCopiedItem,
 	clearClipboard,
 } from '../common/clipboardItemsReducer.js';
+import getReduxPersistenceStore from '../background/store.js';
 
 console.log(`This is the Popup file!!!`);
 
-const proxyStore = getProxyStore();
+const reduxPersistenceStore = await getReduxPersistenceStore();
+console.log(`Redux Store : `, reduxPersistenceStore);
 
-proxyStore.subscribe(() => {
-	const latestState = proxyStore.getState();
+reduxPersistenceStore.subscribe(() => {
+	const latestState = reduxPersistenceStore.getState();
+	const clipboardItems = latestState?.clipboardItems;
 	console.log(
 		`Inside First ProxyStore.subscribe() - Latest state : `,
-		latestState
+		latestState,
+		clipboardItems
 	);
 });
 
-proxyStore.subscribe(() => {
-	const latestState = proxyStore.getState();
-	console.log(
-		`Inside Second ProxyStore.subscribe() - Latest state : `,
-		latestState
-	);
-});
+async function testingWithoutReact() {
+	const firstState = reduxPersistenceStore.getState();
+	console.log(`First State before any dispatches : `, firstState);
+
+	// reduxPersistenceStore.dispatch(addCopiedItem('Copied Text 1'));
+	// reduxPersistenceStore.dispatch(addCopiedItem('Copied Text 2'));
+	// reduxPersistenceStore.dispatch(addCopiedItem('Copied Text 3'));
+
+	// const latestState1 = reduxPersistenceStore.getState();
+	// console.log(`testingWithoutReact() - Latest State 3 : `, latestState1);
+
+	// await proxyStore.dispatch(addCopiedItem('Copied Text 4'));
+	// proxyStore.dispatch(addCopiedItem('Copied Text 5'));
+	// proxyStore.dispatch(addCopiedItem('Copied Text 6'));
+	// proxyStore.dispatch(addCopiedItem('Copied Text 7'));
+	// proxyStore.dispatch(addCopiedItem('Copied Text 8'));
+	// await proxyStore.dispatch(addCopiedItem('Copied Text 7'));
+}
 
 function testingWithReact() {
 	// throw new Error(`testingWithReact() - Now it won't go....let see`);
 	console.log(
 		`testingWithoutReact() - Testing Redux Chrome Storage "WITH" React`
 	);
-	proxyStore.ready(async () => {
-		console.log(
-			`testingWithoutReact() - Popup Context : Proxy Store is now ready`
-		);
-		ReactDOM.createRoot(document.getElementById('root')).render(
-			<React.StrictMode>
-				<Provider store={proxyStore}>
-					<Popup />
-				</Provider>
-			</React.StrictMode>
-		);
-	});
-}
 
-async function testingWithoutReact() {
-	console.log(
-		`testingWithoutReact() - Testing Redux Chrome Storage "WITHOUT" React`
+	ReactDOM.createRoot(document.getElementById('root')).render(
+		<React.StrictMode>
+			<Provider store={reduxPersistenceStore}>
+				<Popup />
+			</Provider>
+		</React.StrictMode>
 	);
-
-	proxyStore.ready(async () => {
-		console.log(
-			`testingWithoutReact() - Popup Context : Proxy Store is now ready`
-		);
-		// await proxyStore.dispatch(clearClipboard());
-		const latestState1 = proxyStore.getState();
-		console.log(`Latest state 1 : `, latestState1);
-
-		// await proxyStore.dispatch(addCopiedItem('Copied Text 1'));
-		// proxyStore.dispatch(addCopiedItem('Copied Text 2'));
-		// proxyStore.dispatch(addCopiedItem('Copied Text 3'));
-		// await proxyStore.dispatch(addCopiedItem('Copied Text 4'));
-		// proxyStore.dispatch(addCopiedItem('Copied Text 5'));
-		// proxyStore.dispatch(addCopiedItem('Copied Text 6'));
-		// proxyStore.dispatch(addCopiedItem('Copied Text 7'));
-		// proxyStore.dispatch(addCopiedItem('Copied Text 8'));
-		// await proxyStore.dispatch(addCopiedItem('Copied Text 7'));
-
-		// const latestState3 = proxyStore.getState();
-		// console.log(`testingWithoutReact() - Latest State 3 : `, latestState3);
-	});
 }
 
 setTimeout(() => {

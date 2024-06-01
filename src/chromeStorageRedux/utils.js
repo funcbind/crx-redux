@@ -1,8 +1,8 @@
+/* eslint-disable no-empty */
 /* eslint-disable no-undef */
-import { CHROME_REDUX_CONSTANTS, EXTENSIONS_CONTEXTS } from './constants';
+import { EXTENSIONS_CONTEXTS } from './constants';
 // import browser from 'webextension-polyfill';
-
-console.log(` ==============>>>>> am inside utils file`);
+import { matchPattern } from 'browser-extension-url-match';
 
 const randomString = () =>
 	Math.random().toString(36).substring(7).split('').join('.');
@@ -99,31 +99,6 @@ export function kindOf(val) {
 
 export const $$observable = /* #__PURE__ */ (() =>
 	(typeof Symbol === 'function' && Symbol.observable) || '@@observable')();
-
-export function shallowDiff(oldObj, newObj) {
-	const difference = [];
-
-	Object.keys(newObj).forEach((key) => {
-		if (oldObj[key] !== newObj[key]) {
-			difference.push({
-				key,
-				value: newObj[key],
-				change: CHROME_REDUX_CONSTANTS.DIFF_STATUS_UPDATED,
-			});
-		}
-	});
-
-	Object.keys(oldObj).forEach((key) => {
-		if (!Object.prototype.hasOwnProperty.call(newObj, key)) {
-			difference.push({
-				key,
-				change: CHROME_REDUX_CONSTANTS.DIFF_STATUS_REMOVED,
-			});
-		}
-	});
-
-	return difference;
-}
 
 export function getBrowserAPI() {
 	let api;
@@ -228,47 +203,67 @@ export function getContextType() {
 export function sendMessageToTabs(tabId, broadcastMesage) {
 	const browser = getBrowserAPI();
 
-	new Promise((resolve, reject) => {
-		browser.tabs.sendMessage(tabId, broadcastMesage, (response) => {
-			// console.log(`sendMessageToTabs() - response`, response);
-			const lastError = browser.runtime.lastError;
-			if (lastError) {
-				console.error(
-					`Some error occured in broadcasting store subscription to content script with tabId : ${tabId}`,
-					lastError
-				);
-				reject(lastError);
-			} else {
-				resolve(response);
-			}
-		});
+	browser.tabs.sendMessage(tabId, broadcastMesage, (response) => {
+		// console.log(`sendMessageToTabs() - response`, response);
+		const lastError = browser.runtime.lastError;
+		if (lastError) {
+			console.warn(
+				`Some error occured in broadcasting store subscription to content script with tabId : ${tabId}`,
+				lastError
+			);
+		} else {
+		}
 	});
 }
 
 export function sendMessageToOtherContexts(broadcastMessge) {
 	const browser = getBrowserAPI();
 
-	new Promise((resolve, reject) => {
-		browser.runtime.sendMessage(broadcastMessge, (response) => {
-			// console.log(`sendMessageToOtherContexts() - response`, response);
-			const lastError = browser.runtime.lastError;
-			if (lastError) {
-				console.error(
-					`Some error occured in broadcasting Message to other contexts`,
-					lastError
-				);
-				reject(lastError);
-			} else {
-				resolve(response);
-			}
-		});
+	browser.runtime.sendMessage(broadcastMessge, (response) => {
+		// console.log(`sendMessageToOtherContexts() - response`, response);
+		const lastError = browser.runtime.lastError;
+		if (lastError) {
+			console.debug(
+				`Some error occured in broadcasting Message to other contexts`,
+				lastError
+			);
+		} else {
+		}
 	});
 }
 
-export function iterateOverContentScript(fn) {
+function getContentScriptUrlMatchesPatterns(browser) {
+	const manifest = browser.runtime.getManifest();
+	const contentScriptsArr = manifest['content_scripts'];
+
+	if (!contentScriptsArr) {
+		return;
+	}
+	return contentScriptsArr.reduce(
+		(acc, { matches }) => acc.concat(matches),
+		[]
+	);
+}
+
+export function iterateOverContentScriptTabs(fn) {
 	const browser = getBrowserAPI();
+	const contentScriptUrlMatchesPatterns =
+		getContentScriptUrlMatchesPatterns(browser);
+
+	if (!contentScriptUrlMatchesPatterns) {
+		console.log(`There are no content script in the setup for the project`);
+		return;
+	}
+
+	console.debug(
+		`Content Script Url Matches Patterns : `,
+		contentScriptUrlMatchesPatterns
+	);
+
+	const contentScriptMatchPatternValidator = matchPattern(
+		contentScriptUrlMatchesPatterns
+	).assertValid();
 	// broadcasting to all content scripts
-	const extensionId = browser.runtime.id;
 	browser.tabs.query({}, (tabs = []) => {
 		for (const tab of tabs) {
 			const { id: tabId, url: tabUrl } = tab;
@@ -281,7 +276,8 @@ export function iterateOverContentScript(fn) {
 				);
 			}
 
-			if (!tabUrl.includes(extensionId)) {
+			if (contentScriptMatchPatternValidator.match(tabUrl)) {
+				console.log(`Tab URL matches content script match pattern : ${tabUrl}`);
 				fn(tabId);
 			}
 		}

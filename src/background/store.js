@@ -1,18 +1,15 @@
 // import { configureStore } from '@reduxjs/toolkit';
-import { createStore, combineReducers, compose } from 'redux';
+import { createStore, combineReducers, compose, applyMiddleware } from 'redux';
 
 import clipboardSettingsReducer from '../common/clipboardSettingsReducer';
-import copiedItemsReducer, {
-	addCopiedItem,
-} from '../common/clipboardItemsReducer';
-import createPersistentStore, {
-	clearPersistentStore,
-	applyMiddleware,
-} from '../chromeStorageRedux/createPersistentStore';
+import copiedItemsReducer from '../common/clipboardItemsReducer';
+import { clearPersistentStore } from '../chromeStorageRedux/createPersistenceStore';
 import connectToOtherPartsEnhancer from '../chromeStorageRedux/connectToOtherPartsEnhancer';
 import testingCounterReducer from '../common/testingCounterReducer';
 import { createLogger } from 'redux-logger';
-import { loglevel } from '../common/appLogger';
+import persistenceStoreEnhancer from '../chromeStorageRedux/reduxPersistenceEnhancer';
+import logLevel from '../common/appLogger';
+import { isUndefinedOrNull } from '../chromeStorageRedux/utils';
 
 console.log(`Inside store.js - Setting up redux store`);
 
@@ -55,7 +52,7 @@ const loggerMiddleware = (storeAPI) => (next) => async (action) => {
 	// 	` |  Action Payload Text : `,
 	// 	action?.payload?.text
 	// );
-	loglevel.info(
+	logLevel.info(
 		'         ---->>>>    dispatching | Action Type',
 		action?.type,
 		` |  Action Payload Text : `,
@@ -64,22 +61,30 @@ const loggerMiddleware = (storeAPI) => (next) => async (action) => {
 	);
 	let result = await next(action);
 	const latestState = await storeAPI.getState();
-	loglevel.info('         ---->>>>>   next state', latestState);
+	logLevel.info('         ---->>>>>   next state', latestState);
 	// console.log('         ---->>>>>   next state', latestState);
 	return result;
 };
-const middlewareEnhancer = applyMiddleware(loggerMiddleware, logger);
+const middlewareEnhancer = applyMiddleware(logger);
 
-export async function createTestStore() {
-	clearPersistentStore();
-	const store = await createPersistentStore(
-		combinedReducer,
-		preloadedState,
-		compose(connectToOtherPartsEnhancer, middlewareEnhancer)
-		// connectToOtherPartsEnhancer
-	);
-	console.log(`Store created`, store);
-	return store;
+let reduxPersistenceStore;
+async function getReduxPersistenceStore() {
+	// clearPersistentStore();
+
+	if (isUndefinedOrNull(reduxPersistenceStore)) {
+		reduxPersistenceStore = await createStore(
+			combinedReducer,
+			preloadedState,
+			compose(persistenceStoreEnhancer)
+			// connectToOtherPartsEnhancer
+		);
+	}
+
+	return reduxPersistenceStore;
 }
 
-export default createTestStore;
+export function createNormalReduxStore() {
+	return createStore(combinedReducer, preloadedState);
+}
+
+export default getReduxPersistenceStore;

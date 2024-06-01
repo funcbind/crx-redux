@@ -24,7 +24,6 @@ function Options() {
 	copiedItems = copiedItems || [];
 
 	function handleAddNewCopiedItem() {
-		throw new Error(`Testing rollbar error tracking lib`);
 		console.log(`Inside handle Add New Copied Item`);
 		let tempNewCopiedItemText = newCopiedItemText;
 		if (newCopiedItemText === ``) {

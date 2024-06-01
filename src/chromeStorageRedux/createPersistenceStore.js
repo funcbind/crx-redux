@@ -1,22 +1,12 @@
 /* eslint-disable no-undef */
 
-import {
-	kindOf,
-	ActionTypes,
-	isPlainObject,
-	$$observable,
-	getBrowserAPI,
-} from './utils';
+import { kindOf, ActionTypes, isPlainObject, $$observable } from './utils';
 import { compose } from 'redux';
 import { DeferredPromise } from '@open-draft/deferred-promise';
 import { LocalStorage } from '../chromeStorage/BrowserStorage';
 // import browser from 'webextension-polyfill';
-import {
-	CHROME_STORAGE_KEY_FOR,
-	EXTENSIONS_CONTEXTS,
-	COMMUNICATION_MESSAGE_IDS,
-	CHROME_REDUX_CONSTANTS,
-} from './constants';
+import { CHROME_STORAGE_KEY_FOR } from './constants';
+import logLevel from '../common/appLogger';
 
 export default async function createPersistentStore(
 	reducer,
@@ -484,7 +474,7 @@ export default async function createPersistentStore(
 // For testing purposes only
 
 export async function clearPersistentStore() {
-	console.log(`Clearing all previous state in chrome storage`);
+	logLevel.info(`Clearing all previous state in chrome storage`);
 	await LocalStorage.delete([
 		CHROME_STORAGE_KEY_FOR.REDUX_STORE,
 		CHROME_STORAGE_KEY_FOR.IS_REDUX_STORE_INITIALIZED,

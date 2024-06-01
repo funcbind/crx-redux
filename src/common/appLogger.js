@@ -12,11 +12,8 @@ import log from 'loglevel';
 // 	};
 // };
 // log.rebuild();
-log.setLevel('TRACE', false);
 
-log.warn(`Inside app logger...`);
-log.info(`Inside app logger...`);
-log.trace(`Inside app logger...`);
-log.debug(`Inside app logger...`);
+const logLevel = log;
+logLevel.setLevel('TRACE', false);
 
-export { log as loglevel };
+export default logLevel;

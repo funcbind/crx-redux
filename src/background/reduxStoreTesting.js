@@ -1,18 +1,27 @@
-import createTestStore from './store';
-import { addCopiedItem } from '../common/clipboardItemsReducer';
+import createTestStore, { createNormalReduxStore } from './store';
+import { addCopiedItem, clearClipboard } from '../common/clipboardItemsReducer';
+import logLevel from '../common/appLogger';
+import getReduxPersistenceStore from './store';
 // import { onMessage } from 'webext-bridge/background';
 
 let unsubscribe;
 
-console.log(`Inside reduxStoreTesting.js - Testing persistent store`);
-
 setTimeout(async () => {
-	// clearing local storage before testing
-	const store = await createTestStore();
-	console.log(`Test Store : `, store);
-	unsubscribe = store.subscribe(async () => {
-		const latestState = await store.getState();
-		const { clipboardItems } = latestState;
+	// Normal Redux store
+	const normalReduxStore = createNormalReduxStore();
+
+	normalReduxStore.subscribe(() => {
+		logLevel.debug(`Normal Redux Store changed`, normalReduxStore.getState());
+	});
+	// normalReduxStore.dispatch(addCopiedItem('Normal Redux Store Dispatch 1'));
+	// normalReduxStore.dispatch(addCopiedItem('Normal Redux Store Dispatch 2'));
+
+	// peristence Store
+	const reduxPersistenceStore = await getReduxPersistenceStore();
+	console.log(`Redux Store : `, reduxPersistenceStore);
+	unsubscribe = reduxPersistenceStore.subscribe(async () => {
+		const latestState = await reduxPersistenceStore.getState();
+		const clipboardItems = latestState?.clipboardItems;
 		console.log(
 			`reduxStoreTesting.js : Background store changed -> Latest state`,
 			latestState,
@@ -20,18 +29,25 @@ setTimeout(async () => {
 		);
 	});
 
-	// const firstState = await store.getState();
+	await reduxPersistenceStore.dispatch(clearClipboard());
+	// const firstState = await reduxPersistenceStore.getState();
 	// console.log(`First state before anything : `, firstState);
 
-	await store.dispatch(addCopiedItem('Middleware Testing Dispatch 1'));
-	// await store.dispatch(addCopiedItem('Middleware Testing Dispatch 2'));
-	// store.dispatch(addCopiedItem('Middleware Testing Dispatch 3'));
-	const latestState1 = await store.getState();
-	console.log(`Latest state `, latestState1);
+	// await reduxPersistenceStore.dispatch(
+	// 	addCopiedItem('Middleware Testing Dispatch 1')
+	// );
+	// await reduxPersistenceStore.dispatch(
+	// 	addCopiedItem('Middleware Testing Dispatch 2')
+	// );
+	// // // store.dispatch(addCopiedItem('Middleware Testing Dispatch 3'));
+	// const latestState1 = await reduxPersistenceStore.getState();
+	// console.log(`Latest state `, latestState1);
 
-	// store.dispatch(addCopiedItem('Middleware Testing Dispatch 4'));
-	// await store.dispatch(addCopiedItem('Middleware Testing Dispatch 5'));
-	// const latestState2 = await store.getState();
+	// // store.dispatch(addCopiedItem('Middleware Testing Dispatch 4'));
+	// await reduxPersistenceStore.dispatch(
+	// 	addCopiedItem('Middleware Testing Dispatch 5')
+	// );
+	// const latestState2 = await reduxPersistenceStore.getState();
 	// console.log(`Latest state `, latestState2);
 
 	// store.dispatch(addCopiedItem('Middleware Testing Dispatch 6'));
@@ -43,4 +59,4 @@ setTimeout(async () => {
 	// 	const latestState = await store.getState();
 	// 	console.log(`Latest state : `, latestState);
 	// }, 5000);
-}, 0);
+}, 2000);
