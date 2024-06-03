@@ -1,38 +1,107 @@
+/* eslint-disable no-undef */
 import {
 	getBrowserAPI,
 	getContextType,
-	iterateOverContentScriptTabs,
-	sendMessageToTabs,
-	sendMessageToOtherContexts,
 	isUndefinedOrNull,
 	ActionTypes,
 } from './utils';
-import {
-	CHROME_STORAGE_KEY_FOR,
-	COMMUNICATION_MESSAGE_IDS,
-	EXTENSIONS_CONTEXTS,
-} from './constants';
+import { CHROME_STORAGE_KEY_FOR, EXTENSIONS_CONTEXTS } from './constants';
 import { LocalStorage } from '../chromeStorage/BrowserStorage';
 import { DeferredPromise } from '@open-draft/deferred-promise';
 import logLevel from '../common/appLogger';
+import { isEqual, pick } from 'lodash-es';
 
 const appLogger = logLevel.getLogger('persistenceStoreEnhancer');
 appLogger.setLevel(logLevel.levels.DEBUG);
 
-export default function localContextPersistenceEnhancer(createStore) {
-	return async (reducer, preLoadedState) => {
-		const storeContext = getContextType();
+appLogger.debug(`Inside contextPersistenceEnhancer.js`);
+activateBrowserSessionPersistenceLevels();
+
+function activateBrowserSessionPersistenceLevels() {
+	appLogger.debug(`activateBrowserSessionPersistenceLevels()`);
+	// if (isUndefinedOrNull(contextName)) {
+	// 	throw new Error(`1st argument i.e context name {string} is Required`);
+	// }
+	const browser = getBrowserAPI();
+	browser.runtime.onStartup.addListener(async () => {
+		appLogger.info(`background.js - Browser has started!!`);
+		// clearLocalContextPersistedState(contextName, keysToPersist);
+		let browserSessionKeysForAllContexts = await LocalStorage.get(
+			CHROME_STORAGE_KEY_FOR.CONTEXT_PERSISTENCE_BROWSER_SESSION_KEYS
+		);
+		browserSessionKeysForAllContexts = browserSessionKeysForAllContexts ?? {};
+
+		appLogger.debug(
+			`browserSessionKeysForAllContexts : `,
+			browserSessionKeysForAllContexts
+		);
+
+		for (const context of Object.keys(browserSessionKeysForAllContexts)) {
+			const browserSessionKeysForCurrentContext =
+				browserSessionKeysForAllContexts[context];
+			let localStorageAreaForCurrentContext = CHROME_STORAGE_KEY_FOR[context];
+			let currentContextSavedState =
+				(await LocalStorage.get(localStorageAreaForCurrentContext)) ?? {};
+			// remove browser session keys from local storage
+			const latestState = omit(
+				currentContextSavedState,
+				browserSessionKeysForCurrentContext
+			);
+			appLogger.debug(
+				`context :`,
+				context,
+				`\nlatestState : `,
+				latestState,
+				`\nbrowserSessionKeysForCurrentContext : `,
+				browserSessionKeysForCurrentContext
+			);
+			await LocalStorage.save({
+				[localStorageAreaForCurrentContext]: latestState,
+			});
+		}
+	});
+}
+
+const getContextPersistenceEnhancer =
+	(config) => (createStore) => async (reducer, preLoadedState) => {
+		const currentContext = getContextType();
 		let subscriptionListeners = [];
+		let contextSessionKeys = config?.contextSessionKeys;
+		let browserSessionKeys = config?.browserSessionKeys;
 
-		const chromeStorageKeyForLocalContext =
-			CHROME_STORAGE_KEY_FOR[`REDUX_STORE_${storeContext}`];
+		// leave marker for browser session persistence in chrome storage
+		let savedBrowserSessionKeys =
+			(await LocalStorage.get(
+				CHROME_STORAGE_KEY_FOR.CONTEXT_PERSISTENCE_BROWSER_SESSION_KEYS
+			)) ?? {};
 
-		appLogger.trace(
-			`Local Persistence Enhancer - Chrome Storage Key For Local Context : ${chromeStorageKeyForLocalContext}`
+		appLogger.debug(
+			`Initializing context persistence enhancer : config `,
+			config,
+			`\nsavedBrowserSessionKeys : `,
+			savedBrowserSessionKeys
+		);
+
+		let savedCurrentContextBrowserSessionKeys =
+			savedBrowserSessionKeys[currentContext];
+
+		if (!isEqual(browserSessionKeys, savedCurrentContextBrowserSessionKeys)) {
+			savedBrowserSessionKeys[currentContext] = browserSessionKeys;
+			await localStorage.save({
+				[CHROME_STORAGE_KEY_FOR.CONTEXT_PERSISTENCE_BROWSER_SESSION_KEYS]:
+					savedBrowserSessionKeys,
+			});
+		}
+
+		const storageAreaForCurrentContext = CHROME_STORAGE_KEY_FOR[currentContext];
+
+		appLogger.debug(
+			`Local Persistence Enhancer - Chrome Storage Key For Local Context : 
+			${storageAreaForCurrentContext}, context : ${currentContext}`
 		);
 
 		let previouslySavedState = await LocalStorage.get(
-			chromeStorageKeyForLocalContext
+			storageAreaForCurrentContext
 		);
 		previouslySavedState = previouslySavedState ?? {};
 
@@ -41,6 +110,7 @@ export default function localContextPersistenceEnhancer(createStore) {
 			...previouslySavedState,
 		};
 
+		appLogger.debug(`previouslySavedState : `, previouslySavedState);
 		const extendedReducer = extendBaseReducer(reducer);
 		const store = await createStore(
 			extendedReducer,
@@ -52,16 +122,17 @@ export default function localContextPersistenceEnhancer(createStore) {
 		let getState;
 		let dispatch;
 
-		if (storeContext === EXTENSIONS_CONTEXTS.BACKGROUND) {
+		if (currentContext === EXTENSIONS_CONTEXTS.BACKGROUND) {
 			getState = getBackgroundContextGetState(
 				store,
-				chromeStorageKeyForLocalContext
+				storageAreaForCurrentContext
 			);
 			dispatch = getDispatchForBackgroundContext(
 				store,
 				preLoadedState,
 				subscriptionListeners,
-				chromeStorageKeyForLocalContext
+				storageAreaForCurrentContext,
+				contextSessionKeys
 			);
 			await dispatch({ type: ActionTypes.INIT });
 		} else {
@@ -69,10 +140,10 @@ export default function localContextPersistenceEnhancer(createStore) {
 			dispatch = getDispatchForNonBackgroundContexts(
 				store,
 				subscriptionListeners,
-				chromeStorageKeyForLocalContext
+				storageAreaForCurrentContext,
+				contextSessionKeys
 			);
 		}
-
 		return {
 			...store,
 			dispatch,
@@ -80,17 +151,52 @@ export default function localContextPersistenceEnhancer(createStore) {
 			subscribe,
 		};
 	};
-}
+
+export default getContextPersistenceEnhancer;
+
+export const clearLocalContextPersistedState = async (
+	contextName,
+	keysToPersist
+) => {
+	appLogger.info(`Clearing local background state`);
+	LocalStorage.delete(CHROME_STORAGE_KEY_FOR.BACKGROUND);
+
+	let localBackgroundState = await LocalStorage.get(
+		CHROME_STORAGE_KEY_FOR.BACKGROUND
+	);
+
+	localBackgroundState = localBackgroundState ?? {};
+
+	if (keysToPersist && Array.isArray(keysToPersist)) {
+		localBackgroundState = pick(localBackgroundState, keysToPersist);
+
+		await LocalStorage.save({
+			[CHROME_STORAGE_KEY_FOR.BACKGROUND]: localBackgroundState,
+		});
+	} else {
+		LocalStorage.delete(CHROME_STORAGE_KEY_FOR.BACKGROUND);
+	}
+};
 
 const getDispatchForNonBackgroundContexts =
-	(store, subscriptionListeners, chromeStorageKeyForLocalContext) =>
+	(
+		store,
+		subscriptionListeners,
+		storageAreaForCurrentContext,
+		contextSessionKeys
+	) =>
 	(action) => {
 		const res = store.dispatch(action);
-		const latestState = store.getState();
+		let latestState = store.getState();
 		subscriptionListeners.forEach((l) => l());
 
+		// Pick only those keys from latest state that need to be persisted
+		if (contextSessionKeys && Array.isArray(contextSessionKeys)) {
+			latestState = omit(latestState, contextSessionKeys);
+		}
+
 		LocalStorage.save({
-			[chromeStorageKeyForLocalContext]: latestState,
+			[storageAreaForCurrentContext]: latestState,
 		}).catch((e) => {
 			appLogger.error(
 				`Some error occured while saving latest state to chrome storage`,
@@ -136,71 +242,6 @@ function extendBaseReducer(baseReducer) {
 				return baseReducer(state, action);
 		}
 	};
-}
-
-function handleStoreUpdatesFromOtherContexts(
-	store,
-	storeContext,
-	subscriptionListeners
-) {
-	const browser = getBrowserAPI();
-	browser.runtime.onMessage.addListener(
-		async (message, sender, sendResponse) => {
-			let { action, context: dispatchingContext, type: messageType } = message;
-			if (
-				messageType === COMMUNICATION_MESSAGE_IDS.STORE_UPDATE_BROADCAST &&
-				storeContext !== dispatchingContext
-			) {
-				appLogger.trace(
-					`handleStoreUpdatesFromOtherContexts() - Store Broadcast update : From ${dispatchingContext} context with data`,
-					message
-				);
-				let latestStateFromChromeStorage = await LocalStorage.get(
-					CHROME_STORAGE_KEY_FOR.REDUX_STORE
-				);
-				// appLogger.debug(
-				// 	`handleStoreUpdatesFromOtherContexts() - Latest state from chrome storage`,
-				// 	latestStateFromChromeStorage
-				// );
-				if (!isUndefinedOrNull(latestStateFromChromeStorage)) {
-					// should work for background-worker as well
-					store.dispatch({
-						type: 'REPLACE_STATE_FROM_CHROME_STORAGE',
-						payload: latestStateFromChromeStorage,
-					});
-					subscriptionListeners.forEach((l) => l());
-				}
-				sendResponse(`Store broadcast received & handled`);
-				return true;
-			}
-		}
-	);
-}
-
-async function broadcastMessageToOtherParts(broadcastMessage) {
-	appLogger.debug(
-		`broadcastMessageToOtherParts() - Broadcast Message`,
-		broadcastMessage,
-		broadcastMessage?.context
-	);
-	const { context: dispatchingContext } = broadcastMessage;
-	const broadcastMessageType = broadcastMessage?.type;
-
-	if (isUndefinedOrNull(broadcastMessageType)) {
-		throw new Error(
-			`broadcastMessageToOtherParts() - Broadcast Message Type Not found : ${broadcastMessage}`
-		);
-	}
-
-	// cannot use chrome.tabs.sendMessage from within content scripts
-	if (dispatchingContext !== EXTENSIONS_CONTEXTS.CONTENT_SCRIPT) {
-		// broadcast to content scripts
-		iterateOverContentScriptTabs((tabId) => {
-			sendMessageToTabs(tabId, broadcastMessage);
-		});
-	}
-
-	sendMessageToOtherContexts(broadcastMessage);
 }
 
 const getDispatchForBackgroundContext = (

@@ -196,6 +196,7 @@ export function getContextType() {
 	}
 
 	// console.log(`Utils.js : getContextType() - contextType : `, contextType);
+	contextType = contextType.toUpperCase();
 
 	return contextType;
 }

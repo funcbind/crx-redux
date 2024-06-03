@@ -91,9 +91,7 @@ export default async function createPersistentStore(
 			);
 		}
 
-		const currentState = await LocalStorage.get(
-			CHROME_STORAGE_KEY_FOR.REDUX_STORE
-		);
+		const currentState = await LocalStorage.get(CHROME_STORAGE_KEY_FOR.GLOBAL);
 
 		return currentState;
 	}
@@ -246,7 +244,7 @@ export default async function createPersistentStore(
 			isPreviousDispatchExecuting = true;
 
 			let lastPersistedState = await LocalStorage.get(
-				CHROME_STORAGE_KEY_FOR.REDUX_STORE
+				CHROME_STORAGE_KEY_FOR.GLOBAL
 			);
 
 			let nonExistentPersistedState =
@@ -298,12 +296,12 @@ export default async function createPersistentStore(
 				// programmatical error
 				if (nonExistentPersistedState) {
 					await LocalStorage.save({
-						[CHROME_STORAGE_KEY_FOR.REDUX_STORE]: nextState,
+						[CHROME_STORAGE_KEY_FOR.GLOBAL]: nextState,
 					});
 				}
 			} else if (nextState !== currentState) {
 				await LocalStorage.save({
-					[CHROME_STORAGE_KEY_FOR.REDUX_STORE]: nextState,
+					[CHROME_STORAGE_KEY_FOR.GLOBAL]: nextState,
 				});
 			} else {
 				// console.log(
@@ -476,7 +474,7 @@ export default async function createPersistentStore(
 export async function clearPersistentStore() {
 	logLevel.info(`Clearing all previous state in chrome storage`);
 	await LocalStorage.delete([
-		CHROME_STORAGE_KEY_FOR.REDUX_STORE,
+		CHROME_STORAGE_KEY_FOR.GLOBAL,
 		CHROME_STORAGE_KEY_FOR.IS_REDUX_STORE_INITIALIZED,
 		CHROME_STORAGE_KEY_FOR.ACTIVE_EXTENSION_CONTEXTS,
 	]);

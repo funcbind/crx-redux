@@ -7,9 +7,10 @@ import { clearPersistentStore } from '../chromeStorageRedux/createPersistenceSto
 import connectToOtherPartsEnhancer from '../chromeStorageRedux/connectToOtherPartsEnhancer';
 import testingCounterReducer from '../common/testingCounterReducer';
 import { createLogger } from 'redux-logger';
-import persistenceStoreEnhancer from '../chromeStorageRedux/reduxPersistenceEnhancer';
+import globalPersistenceEnhancer from '../chromeStorageRedux/globalPersistenceEnhancer';
 import logLevel from '../common/appLogger';
 import { isUndefinedOrNull } from '../chromeStorageRedux/utils';
+import getContextPersistenceEnhancer from '../chromeStorageRedux/contextPersistenceEnhancer';
 
 console.log(`Inside store.js - Setting up redux store`);
 
@@ -70,12 +71,13 @@ const middlewareEnhancer = applyMiddleware(logger);
 let reduxPersistenceStore;
 async function getReduxPersistenceStore() {
 	// clearPersistentStore();
+	const contextPersistenceEnhancer = getContextPersistenceEnhancer();
 
 	if (isUndefinedOrNull(reduxPersistenceStore)) {
 		reduxPersistenceStore = await createStore(
 			combinedReducer,
 			preloadedState,
-			compose(persistenceStoreEnhancer)
+			compose(contextPersistenceEnhancer)
 			// connectToOtherPartsEnhancer
 		);
 	}

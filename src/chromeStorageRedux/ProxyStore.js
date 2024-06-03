@@ -203,9 +203,7 @@ function CreateProxyStore(context) {
 	}
 
 	async function getStateDirectlyFromChromeStorage() {
-		const currentState = await LocalStorage.get(
-			CHROME_STORAGE_KEY_FOR.REDUX_STORE
-		);
+		const currentState = await LocalStorage.get(CHROME_STORAGE_KEY_FOR.GLOBAL);
 
 		if (!currentState) {
 			throw new Error(`Proxy state is undefined or null..`);

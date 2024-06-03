@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import {
 	getBrowserAPI,
 	getContextType,
@@ -19,13 +20,17 @@ import logLevel from '../common/appLogger';
 const appLogger = logLevel.getLogger('persistenceStoreEnhancer');
 appLogger.setLevel(logLevel.levels.DEBUG);
 
-export default function persistenceStoreEnhancer(createStore) {
+export default function globalPersistenceEnhancer(createStore) {
 	return async (reducer, preLoadedState) => {
+		appLogger.info(`Inside global Persistence Enhancer`);
+		chrome.runtime.onStartup.addListener(() => {
+			appLogger.info(`Global Persistence Enhancer - Browser has started!!`);
+		});
 		const storeContext = getContextType();
 		let subscriptionListeners = [];
 
 		let previouslySavedState = await LocalStorage.get(
-			CHROME_STORAGE_KEY_FOR.REDUX_STORE
+			CHROME_STORAGE_KEY_FOR.GLOBAL
 		);
 		previouslySavedState = previouslySavedState ?? {};
 
@@ -84,7 +89,7 @@ const getDispatchForNonBackgroundContexts =
 		subscriptionListeners.forEach((l) => l());
 
 		LocalStorage.save({
-			[CHROME_STORAGE_KEY_FOR.REDUX_STORE]: latestState,
+			[CHROME_STORAGE_KEY_FOR.GLOBAL]: latestState,
 		})
 			.then(() => {
 				appLogger.trace(
@@ -125,9 +130,7 @@ const getSubscribeMethod = (subscriptionListeners) => (listener) => {
 
 const getBackgroundContextGetState = (store) => async () => {
 	store.getState();
-	const currentState = await LocalStorage.get(
-		CHROME_STORAGE_KEY_FOR.REDUX_STORE
-	);
+	const currentState = await LocalStorage.get(CHROME_STORAGE_KEY_FOR.GLOBAL);
 	return currentState;
 };
 
@@ -160,7 +163,7 @@ function handleStoreUpdatesFromOtherContexts(
 					message
 				);
 				let latestStateFromChromeStorage = await LocalStorage.get(
-					CHROME_STORAGE_KEY_FOR.REDUX_STORE
+					CHROME_STORAGE_KEY_FOR.GLOBAL
 				);
 				// appLogger.debug(
 				// 	`handleStoreUpdatesFromOtherContexts() - Latest state from chrome storage`,
@@ -240,7 +243,7 @@ const getDispatchForBackgroundContext = (
 			// To take care of background worker sleeping & getting reset
 			if (action.type !== ActionTypes.INIT) {
 				let lastPersistedState = await LocalStorage.get(
-					CHROME_STORAGE_KEY_FOR.REDUX_STORE
+					CHROME_STORAGE_KEY_FOR.GLOBAL
 				);
 				lastPersistedState = lastPersistedState ?? {};
 				let stateReplacementData = {
@@ -264,7 +267,7 @@ const getDispatchForBackgroundContext = (
 			const latestState = store.getState();
 
 			await LocalStorage.save({
-				[CHROME_STORAGE_KEY_FOR.REDUX_STORE]: latestState,
+				[CHROME_STORAGE_KEY_FOR.GLOBAL]: latestState,
 			});
 
 			subscriptionListeners.forEach((l) => l());
